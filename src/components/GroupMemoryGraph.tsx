@@ -12,6 +12,7 @@ type Props = {
   selected: string;
   onSelect: (id: string) => void;
   onOpenEvidence?: (messageId: string) => void;
+  label?: string;
   query: string;
   kind: string;
 };
@@ -24,7 +25,7 @@ const KIND_COLORS: Record<string, string> = {
 const short = (s: string, n = 22) => s.length > n ? `${s.slice(0, n)}…` : s;
 const KIND_LABEL: Record<string, string> = { group: "群空间", member: "成员", segment: "对话段", keyword: "关键词", memory: "记忆", evidence: "原话证据" };
 
-const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function GroupMemoryGraph({ graph, selected, onSelect, onOpenEvidence, query, kind }, ref) {
+const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function GroupMemoryGraph({ graph, selected, onSelect, onOpenEvidence, query, kind, label="群聊记忆图谱" }, ref) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<any>(null);
   const [tooltip, setTooltip] = useState<{ label: string; kind: string; description: string; x: number; y: number } | null>(null);
@@ -104,7 +105,7 @@ const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function Grou
   useEffect(() => { engineRef.current?.select(selected || null); }, [selected]);
 
   return <div className="wge-stage">
-    <canvas ref={canvasRef} className="wge-canvas" role="img" aria-label={`群聊记忆图谱，${data.nodes.length} 个节点，可拖动节点、平移与缩放`} />
+    <canvas ref={canvasRef} className="wge-canvas" role="img" aria-label={`${label}，${data.nodes.length} 个节点，可拖动节点、平移与缩放`} />
     {tooltip && <div className="wge-tooltip" style={{ left: Math.min(tooltip.x + 14, 340), top: Math.max(8, tooltip.y - 14) }}>
       <strong>{short(tooltip.label)}</strong><span>{tooltip.kind}</span>{tooltip.description && <span>{short(tooltip.description, 44)}</span>}
     </div>}

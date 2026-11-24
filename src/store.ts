@@ -4,6 +4,7 @@ import * as M from "../lib/memory.js";
 import * as D from "../lib/devices.js";
 import * as I from "../lib/initiative.js";
 import {planStudyEnvironment} from "../lib/study-environment.js";
+import {preferenceKey} from "../lib/memory-profiles.js";
 import { processAIMessage, processMemoryAI, decideInitiativeAI } from "../lib/ai-client.js";
 import { apiFetch, setAIChoice } from "./api";
 
@@ -212,13 +213,15 @@ export function resetData() {
   persist(); notify();
 }
 export function resetAll() {
-  try { localStorage.removeItem(CHAT_KEY); } catch { /* ignore */ }
+  try { localStorage.removeItem(CHAT_KEY); localStorage.removeItem(preferenceKey); } catch { /* ignore */ }
   resetData(); location.reload();
 }
 
 // 便捷动作
 export function requestStudyEnvironment(question:string,profileId:string){
-  const plan=planStudyEnvironment(state(),{question,profileId});
+  let edits={};
+  try { edits=JSON.parse(localStorage.getItem(preferenceKey)||'{}')?.[profileId] || {}; } catch {}
+  const plan=planStudyEnvironment(state(),{question,profileId,edits});
   if(plan){store.studyPlan=plan;persist();notify();}
   return plan;
 }

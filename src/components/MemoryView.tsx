@@ -21,7 +21,7 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
   const days = [...new Set(states.flatMap((s: any) => s.messages.map((m: any) => dayOf(m.time))))].sort().reverse().slice(0, 4);
   const ev = (r: any) => r.evidence.map((e: any, i: number) => <Button key={i} size="sm" variant="ghost" onClick={() => gotoMessage(r.groupId, e.messageId)}><Quote className="h-3 w-3" />证据原文</Button>);
   return (
-    <div><GroupMemoryDemo/><MemoryChat/><label className="mb-5 flex items-center gap-2 text-sm"><input type="checkbox" checked={store.memoryAIEnabled} onChange={e=>{store.memoryAIEnabled=e.target.checked;notify();}}/>发送群消息时额外提取AI记忆（增加模型调用，默认关闭）</label><div className="grid gap-6 lg:grid-cols-2">
+    <div><GroupMemoryDemo key={store.active} gotoMessage={gotoMessage}/><MemoryChat/><label className="mb-5 flex items-center gap-2 text-sm"><input type="checkbox" checked={store.memoryAIEnabled} onChange={e=>{store.memoryAIEnabled=e.target.checked;notify();}}/>发送群消息时额外提取AI记忆（增加模型调用，默认关闭）</label><div className="grid gap-6 lg:grid-cols-2">
       <GlassCard hover={false} className="p-5">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 data-tour="memory" className="font-display flex items-center gap-2 text-lg font-bold"><Brain className="h-5 w-5 text-whale-600" />关于我</h2>
