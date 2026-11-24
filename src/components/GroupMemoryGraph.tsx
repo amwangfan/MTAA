@@ -27,14 +27,14 @@ const KIND_LABEL: Record<string, string> = { group: "群空间", member: "成员
 const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function GroupMemoryGraph({ graph, selected, onSelect, onOpenEvidence, query, kind }, ref) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<any>(null);
-  const [tooltip, setTooltip] = useState<{ label: string; kind: string; x: number; y: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ label: string; kind: string; description: string; x: number; y: number } | null>(null);
   const [empty, setEmpty] = useState(false);
 
   // groupMemoryGraph → explorer 数据模型 → normalizeGraph
   const data = useMemo(() => normalizeGraph({
     nodes: graph.nodes.map(n => ({
       id: n.id, label: n.label, type: n.kind, status: n.status,
-      description: n.label,
+      description: (n as any).description || n.label, // 来源群＋发送者＋大致含义
       importance: n.kind === "group" ? 0.9 : n.kind === "memory" ? 0.7 : 0.45,
       raw: n,
     })),
@@ -56,6 +56,13 @@ const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function Grou
     resetView: () => engineRef.current?.fit(),
   }));
 
+  // 自动适应：mount（canvas 尺寸就绪后）、数据变化、容器 resize 都 engine.fit()，默认完整显示全部节点
+  const scheduleFit = () => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    requestAnimationFrame(() => { if (!engine.destroyed) engine.fit(); });
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -63,7 +70,7 @@ const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function Grou
       workerFactory: () => new GraphWorker(), // ?worker&inline：单文件构建内可用
       colorOf: (n: any) => KIND_COLORS[n.type] || colorForType(n.type),
       onHover: (node: any, x: number, y: number) => {
-        setTooltip(node ? { label: node.label, kind: KIND_LABEL[node.type] || node.type, x, y } : null);
+        setTooltip(node ? { label: node.label, kind: KIND_LABEL[node.type] || node.type, description: node.description || "", x, y } : null);
       },
       onClick: (node: any) => {
         if (!node) { onSelect(""); return; }
@@ -73,15 +80,18 @@ const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function Grou
       },
     });
     engineRef.current = engine;
-    return () => { engine.destroy(); engineRef.current = null; };
+    scheduleFit(); // mount 后 canvas 尺寸就绪再 fit
+    const stage = canvas.parentElement;
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => scheduleFit()) : null;
+    if (stage) ro?.observe(stage);
+    return () => { ro?.disconnect(); engine.destroy(); engineRef.current = null; };
   }, []);
 
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    const had = engine.nodes.length;
     engine.setData(data.nodes, data.edges);
-    if (!had && data.nodes.length) requestAnimationFrame(() => engine.fit());
+    if (data.nodes.length) scheduleFit(); // 数据变化后自动适应
   }, [data]);
 
   useEffect(() => {
@@ -96,7 +106,7 @@ const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function Grou
   return <div className="wge-stage">
     <canvas ref={canvasRef} className="wge-canvas" role="img" aria-label={`群聊记忆图谱，${data.nodes.length} 个节点，可拖动节点、平移与缩放`} />
     {tooltip && <div className="wge-tooltip" style={{ left: Math.min(tooltip.x + 14, 340), top: Math.max(8, tooltip.y - 14) }}>
-      <strong>{short(tooltip.label)}</strong><span>{tooltip.kind}</span>
+      <strong>{short(tooltip.label)}</strong><span>{tooltip.kind}</span>{tooltip.description && <span>{short(tooltip.description, 44)}</span>}
     </div>}
     <span className="wge-stage-hint">拖动节点重排 · 空白平移 · 滚轮缩放</span>
     {empty && <p className="wge-empty">没有符合条件的节点</p>}
