@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { GitBranch, Minus, Plus, RefreshCw, RotateCcw, Scan, Search } from "lucide-react";
-import { currentGroupMemories, freshGroupDemo, groupMemberPortrait, groupMemoryGraph, groupSpace, refreshGroupDemo, stageGroupMessage } from "../../lib/group-memory-demo.js";
+import { currentGroupMemories, groupMemberPortrait, groupMemoryGraph, groupSpace, presetGroupDemo, refreshGroupDemo, stageGroupMessage } from "../../lib/group-memory-demo.js";
 import { Badge, Button, GlassCard } from "./ui";
 import GroupMemoryGraph, { type GroupMemoryGraphHandle } from "./GroupMemoryGraph";
 
@@ -9,12 +9,12 @@ const statuses: Record<string, string> = { active: "当前有效", superseded: "
 const kinds = [{ id: "", label: "全部节点" }, { id: "member", label: "成员" }, { id: "keyword", label: "关键词" }, { id: "memory", label: "记忆" }, { id: "evidence", label: "证据" }];
 
 export default function GroupMemoryDemo() {
-  const [data, setData] = useState<any>(freshGroupDemo);
+  const [data, setData] = useState<any>(presetGroupDemo);
   const [selected, setSelected] = useState("group");
   const [kind, setKind] = useState("");
   const [query, setQuery] = useState("");
   const [indexMode, setIndexMode] = useState<"segments" | "members">("segments");
-  const [notice, setNotice] = useState("群消息已备好；手动整合后可查看记忆与证据关系");
+  const [notice, setNotice] = useState("已预置整合：含更正与撤销的完整证据链");
   const graphRef = useRef<GroupMemoryGraphHandle>(null);
   const graph = useMemo(() => groupMemoryGraph(data), [data]);
   const node: any = graph.nodes.find((n: any) => n.id === selected);
@@ -43,7 +43,7 @@ export default function GroupMemoryDemo() {
   return <GlassCard hover={false} className="group-memory-workspace mb-6 p-5">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><div className="flex items-center gap-2"><GitBranch className="h-5 w-5 text-clay-deep"/><h2 className="font-display text-xl font-semibold">群记忆空间</h2><Badge tone="whale">虚构数据演示</Badge></div><p className="mt-1 text-sm text-muted">从群聊到话题、成员画像和有证据的记忆</p></div>
-      <Button size="sm" variant="ghost" onClick={() => { setData(freshGroupDemo()); setSelected("group"); setNotice("演示已重置"); }}><RotateCcw className="h-3 w-3"/>重置演示</Button>
+      <Button size="sm" variant="ghost" onClick={() => { setData(presetGroupDemo()); setSelected("group"); setNotice("已预置整合：含更正与撤销的完整证据链"); }}><RotateCcw className="h-3 w-3"/>重置演示</Button>
     </header>
     <div className="group-memory-summary mt-5">
       <div className="group-memory-space"><span className="group-memory-icon">项</span><div><b>{groupSpace.name}</b><p>{groupSpace.description}</p></div></div>
