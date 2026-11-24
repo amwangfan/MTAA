@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createSimulation, step, advanceAlpha, shouldStartDrag, rotate3D, screenDeltaToWorld3D, ALPHA_MIN, ALPHA_TARGET_DRAG, MAX_MOVE } from '../lib/graph-layout.js';
+import { createSimulation, step, advanceAlpha, shouldStartDrag, rotate3D, screenDeltaToWorld3D, viewMetrics, ALPHA_MIN, ALPHA_TARGET_DRAG, MAX_MOVE } from '../lib/graph-layout.js';
 
 const node = (id, kind = 'member') => ({ id, kind, label: id });
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -195,6 +195,42 @@ test('rotate3D is consistent with screenDeltaToWorld3D projection depth', () => 
 
 // 组件管线往返自检：world →（旋转+透视）→ screen；screen 位移 →（除scale+逆旋转）→ world 增量
 // 加回 world 再投影，屏幕位移必须精确还原（1:1）。覆盖 DEFAULT_ROT 与多种深度/zoom。
+// 数值集成测试：完整复刻组件 onPointerMove 3D 调用链
+// client 增量 → viewDelta(÷letterbox 内容缩放) → ÷zoom → screenDeltaToWorld3D(÷透视 scale→逆旋转) → 累加 world
+// 再经渲染管线（rotate3D→透视→×zoom→×letterbox 缩放）投回屏幕，必须精确还原 client 增量（1:1）。
+test('full component pipeline: client delta roundtrips through letterbox + zoom + perspective', () => {
+  const CX = 480, CY = 225, VIEW_W = 960, VIEW_H = 450;
+  const rects = [[1280, 350], [746.7, 350], [500, 300]]; // 宽版留边 / 恰好 / 竖版留边
+  const rotations = [[-0.18, 0.25], [0.4, -0.6]];
+  const nodes = [[500, 240, 0], [620, 180, -183], [400, 300, 90]];
+  for (const [rw, rh] of rects) for (const [rx, ry] of rotations) for (const [wx, wy, wz] of nodes) for (const zoom of [1, 1.7]) {
+    const vm = viewMetrics(rw, rh, VIEW_W, VIEW_H);
+    const clientDelta = { dx: 60, dy: 40 };
+    // —— 组件 onPointerMove 3D 分支 ——
+    const d = { dx: clientDelta.dx / vm.scale, dy: clientDelta.dy / vm.scale };      // viewDelta
+    const pz = rotate3D(wx - CX, wy - CY, wz, rx, ry).nz;                            // 被拖节点当前投影深度
+    const w = screenDeltaToWorld3D(d.dx / zoom, d.dy / zoom, pz, rx, ry);            // ÷zoom → ÷透视 → 逆旋转
+    const nx2 = wx + w.dx, ny2 = wy + w.dy, nz2 = wz + w.dz;                         // 累加 world 目标
+    // —— 渲染管线（paint）——
+    const r0 = rotate3D(wx - CX, wy - CY, wz, rx, ry);
+    const s0 = Math.max(.55, Math.min(1.6, 550 / (550 - r0.nz)));
+    const r1 = rotate3D(nx2 - CX, ny2 - CY, nz2, rx, ry);
+    const s1 = Math.max(.55, Math.min(1.6, 550 / (550 - r1.nz)));
+    const viewDx = ((CX + r1.nx * s1) - (CX + r0.nx * s0)) * zoom;                   // viewBox 位移（含 zoom）
+    const viewDy = ((CY + r1.ny * s1) - (CY + r0.ny * s0)) * zoom;
+    const gotClientX = viewDx * vm.scale, gotClientY = viewDy * vm.scale;            // 回 client 坐标
+    assert.ok(Math.abs(gotClientX - 60) < 1e-6 && Math.abs(gotClientY - 40) < 1e-6,
+      `rect=${rw}x${rh} rot=(${rx},${ry}) z=${wz} zoom=${zoom}: 期望(60,40) 实际(${gotClientX.toFixed(3)},${gotClientY.toFixed(3)})`);
+  }
+});
+
+test('viewMetrics computes letterbox scale and centering', () => {
+  const m = viewMetrics(1280, 350, 960, 450);
+  assert.ok(Math.abs(m.scale - 350 / 450) < 1e-9, '内容缩放取 min(宽比,高比)');
+  assert.ok(Math.abs(m.ox - (1280 - 960 * m.scale) / 2) < 1e-9, '水平居中留边');
+  assert.ok(Math.abs(m.oy) < 1e-9, '高度撑满无纵向留边');
+});
+
 test('3D drag pipeline roundtrip: screenDelta → world → screen == screenDelta', () => {
   const CX = 480, CY = 225;
   const project = (wx, wy, wz, rx, ry) => {

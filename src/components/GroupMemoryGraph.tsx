@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { createSimulation, rotate3D, screenDeltaToWorld3D, shouldStartDrag, ALPHA_MIN } from "../../lib/graph-layout.js";
+import { createSimulation, rotate3D, screenDeltaToWorld3D, shouldStartDrag, viewMetrics as computeViewMetrics, ALPHA_MIN } from "../../lib/graph-layout.js";
 
 type GraphNode = { id: string; kind: string; label: string; status?: string };
 type GraphLink = { id: string; from: string; to: string; label: string; weight?: number };
@@ -146,12 +146,12 @@ const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function Grou
   useEffect(() => { paintRef.current(); if (!reducedRef.current) startLoop(); }, [zoom]);
 
   // viewBox 960×450 以 preserveAspectRatio=meet 居中缩放，可能留边（letterbox）；
-  // 指针换算必须用实际内容缩放与偏移，否则位移幅度出错。
+  // 指针换算必须用实际内容缩放与偏移（纯函数在 lib，可测试），否则位移幅度出错。
   const viewMetrics = () => {
     const rect = svgRef.current?.getBoundingClientRect();
-    if (!rect || !rect.width || !rect.height) return { scale: 1, ox: 0, oy: 0 };
-    const scale = Math.min(rect.width / VIEW_W, rect.height / VIEW_H);
-    return { scale, ox: rect.left + (rect.width - VIEW_W * scale) / 2, oy: rect.top + (rect.height - VIEW_H * scale) / 2 };
+    if (!rect) return { scale: 1, ox: 0, oy: 0 };
+    const m = computeViewMetrics(rect.width, rect.height, VIEW_W, VIEW_H);
+    return { scale: m.scale, ox: rect.left + m.ox, oy: rect.top + m.oy };
   };
   const toSim2d = (clientX: number, clientY: number) => {
     const m = viewMetrics();
