@@ -7,7 +7,7 @@ const steps:{view:View;target:string;title:string;body:string}[]=[
  {view:'messages',target:'[data-tour="sources"]',title:'选择消息来源',body:'选择关注的群，用模拟管理员“我”试发通知。未配置AI时，可切换规则演示。'},
  {view:'center',target:'.summary-tools',title:'查找与核对',body:'搜索任务或按群筛选。点击事项，查看原文、时间和变更记录。'},
  {view:'memory',target:'[data-tour="memory-dialogue"]',title:'记忆如何改变回答',body:'切换三套模拟记忆，对同一个问题比较回答。点击M编号，核对每句话引用了哪条记忆。'},
- {view:'devices',target:'[data-tour="devices"]',title:'体验提醒与设备',body:'在“主动判断”里试提醒，在这里试设备。设备操作均为模拟。'}
+ {view:'memory',target:'[data-tour="memory-dialogue"]',title:'准备学习环境',body:'说“我要开始学习了”，按记忆偏好和设备状态生成调整建议。逐项批准后，在“设备”核对模拟结果。'}
 ];
 export default function UsageGuide({onViewChange,onClose}:{onViewChange:(view:View)=>void;onClose:()=>void}){
  const [index,setIndex]=useState(0),[box,setBox]=useState<DOMRect|null>(null);

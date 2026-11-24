@@ -81,7 +81,6 @@ export default function SourcesView() {
                       {rc && <div className="notice-read">{rc.read}/{rc.total} 人已读</div>}
                     </div>
                     {att && <AttachmentView a={att} />}
-                    {m.deviceAction && <div className="whale-receipt is-device"><PlugZap className="h-3 w-3" />识别到设备指令，已提交「设备」页等待你批准</div>}
                     <Outcome m={m} />
                   </div>
                 </div>

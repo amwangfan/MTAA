@@ -27,7 +27,7 @@ export default function AboutView({ startDemo }: { startDemo: () => void }) {
       <GlassCard hover={false} className="about-hero">
         <div className="chip mb-4">作品是什么</div>
         <h2 className="font-display text-2xl font-semibold leading-snug md:text-3xl">Whale 是给<span className="text-clay-deep">被群消息淹没的大学生</span>用的 AI 信息管家：把五个群的通知变成有证据的待办，记住你的习惯，在对的时间克制地提醒你，并在你批准后联动宿舍设备。</h2>
-        <div className="mt-5 flex flex-wrap gap-2"><button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />看 30 秒演示</button><Badge tone={store.ai.configured ? "green" : "amber"}>{store.ai.configured ? `当前已接入真实模型 · ${currentModelLabel()}` : "当前未配置模型 · 规则回退"}</Badge></div>
+        <div className="mt-5 flex flex-wrap gap-2"><button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />看 32 秒演示</button><Badge tone={store.ai.configured ? "green" : "amber"}>{store.ai.configured ? `当前已接入真实模型 · ${currentModelLabel()}` : "当前未配置模型 · 规则回退"}</Badge></div>
       </GlassCard>
 
       <SectionHeading eyebrow="Why" title="为什么做" sub="这是我们自己每天的真实烦恼。" />
@@ -38,11 +38,11 @@ export default function AboutView({ startDemo }: { startDemo: () => void }) {
 
       <SectionHeading eyebrow="How" title="怎么用（5 步）" />
       <GlassCard hover={false} className="p-5"><ol className="how-list">
-        <li><b>看演示</b>：点侧栏「一键自动演示」，30 秒看完整流程。</li>
+        <li><b>看演示</b>：点侧栏「一键自动演示」，32 秒看完整流程。</li>
         <li><b>发通知</b>：「消息来源」选一个群，以群主/管理员身份发一条，如「周五18:00前交实验报告」。</li>
         <li><b>确认建议</b>：「信息总结」里点开建议，核对原文高亮后添加或删除。</li>
         <li><b>问记忆</b>：「记忆」里用同一个问题对照三套记忆档案，点 M 编号查依据。</li>
-        <li><b>快进时间</b>：用演示时钟「下一次提醒」，看手机通知横幅；在「设备」批准一次开灯。</li>
+        <li><b>快进时间</b>：用演示时钟「下一次提醒」查看通知；在「记忆」说「我要开始学习了」，按偏好调整设备。</li>
       </ol></GlassCard>
 
       <SectionHeading eyebrow="Architecture" title="技术架构" />

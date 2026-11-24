@@ -3,11 +3,11 @@ import type { View } from "../store";
 import { Reveal, CountUp } from "./ui";
 
 const steps: { n: string; title: string; desc: string; view: View; icon: any }[] = [
-  { n: "1", title: "看 30 秒自动演示", desc: "从一条群通知到提醒和设备联动，完整走一遍。", view: "center", icon: PlayCircle },
+  { n: "1", title: "看 32 秒自动演示", desc: "从一条群通知到提醒和设备联动，完整走一遍。", view: "center", icon: PlayCircle },
   { n: "2", title: "在「消息来源」发一条通知", desc: "选个群，点示例消息或自己写，比如「周五前交实验报告」。", view: "messages", icon: MessagesSquare },
   { n: "3", title: "回「信息总结」确认建议", desc: "点开事项，看原文高亮和证据连线，再决定添加还是删除。", view: "center", icon: CheckCircle2 },
   { n: "4", title: "在「记忆」同题对照", desc: "同一个问题，三套记忆给出三种安排；点 M 编号核对依据。", view: "memory", icon: Brain },
-  { n: "5", title: "快进时钟，看提醒与设备", desc: "「主动判断」里推进时间；「设备」里批准一次开灯。", view: "initiative", icon: BellRing },
+  { n: "5", title: "学习环境随记忆联动", desc: "在「记忆」说「我要开始学习了」，查看偏好与设备状态，批准调整。", view: "memory", icon: BellRing },
 ];
 
 export default function Showcase({ stats, startDemo, goto, startGuide, hide }: { stats: { groups: number; todo: number; memory: number; reminders: number }; startDemo: () => void; goto: (v: View) => void; startGuide: () => void; hide: () => void }) {
@@ -20,7 +20,7 @@ export default function Showcase({ stats, startDemo, goto, startGuide, hide }: {
           <h2 id="hero-title" className="hero-title">群消息太多？<br /><span>Whale 帮你接住每一条</span>作业和通知。</h2>
           <p className="hero-lead">课程群、社团群、项目群、实验室群、宿舍群……重要通知总是淹没在闲聊里。Whale 读懂消息，整理成<strong>有原文证据的待办建议</strong>，记住你的习惯，在合适的时候克制地提醒你，还能经你批准联动宿舍设备。</p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />一键自动演示 · 30 秒</button>
+            <button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />一键自动演示 · 32 秒</button>
             <button className="btn-hero-ghost" onClick={() => goto("messages")}><MousePointerClick className="h-4 w-4" />自己动手试试</button>
             <button className="text-sm text-muted underline-offset-4 hover:underline" onClick={startGuide}>分步引导</button>
           </div>

@@ -10,7 +10,7 @@ export default function ReminderCard({ gotoCenter }: { gotoCenter: () => void })
   const lastSeen = useRef<string | null>(null);
   const latest = unread[unread.length - 1];
   useEffect(() => { if (latest && latest.id !== lastSeen.current) { lastSeen.current = latest.id; store.reminderOpen = true; notify(); } }, [latest?.id]);
-  if (!unread.length) return null;
+  if (!unread.length || (store.demo.running && store.demo.step !== 6)) return null;
   const close = () => { store.reminderOpen = false; notify(); };
   if (!store.reminderOpen) return <button aria-label={`展开${unread.length}条未读提醒`} onClick={() => { store.reminderOpen = true; notify(); }} className="reminder-pill"><BellRing className="h-4 w-4" />{unread.length} 条提醒</button>;
   const r = latest;

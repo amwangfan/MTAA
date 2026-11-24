@@ -1,6 +1,7 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { subscribe, store, allRows, tickStates, persist, notify, checkAI, type View } from "./store";
-import { runDemo, stopDemo } from "./demo";
+import { runDemo } from "./demo";
+import DemoOverlay from "./components/DemoOverlay";
 import UsageGuide, { GUIDE_KEY } from "./components/UsageGuide";
 import Navbar from "./components/Navbar";
 import Showcase from "./components/Showcase";
@@ -14,7 +15,7 @@ import AboutView from "./components/AboutView";
 import SplitView from "./components/SplitView";
 import ReminderCard from "./components/ReminderCard";
 import { WhaleLogo } from "./components/ui";
-import { Square, Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
 function useStore() { const [, force] = useReducer((x: number) => x + 1, 0); useEffect(() => subscribe(force), []); return store; }
 const HERO_KEY = "whale.hero.hidden.v1";
@@ -32,17 +33,40 @@ export default function App() {
   const [guideOpen, setGuideOpen] = useState(false);
   const returnView = useRef<View>("center");
   const [view, setView] = useState<View>("center");
+  const main = useRef<HTMLElement>(null);
+  const sidebarDestination = useRef<View | null>(null);
   const [split, setSplit] = useState<any>(null);
   const [hero, setHero] = useState(() => { try { return !localStorage.getItem(HERO_KEY); } catch { return true; } });
   useEffect(() => { void checkAI(); }, []);
+  useLayoutEffect(() => {
+    const fromSidebar = sidebarDestination.current === view;
+    sidebarDestination.current = null;
+    if (!fromSidebar || !main.current) return;
+
+    window.scrollTo({ top: 0, behavior: "instant" });
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const animation = main.current.animate(
+      reduceMotion
+        ? [{ opacity: 0.86 }, { opacity: 1 }]
+        : [{ opacity: 0.86, transform: "translateY(5px)" }, { opacity: 1, transform: "translateY(0)" }],
+      { duration: 200, easing: "ease-out" },
+    );
+    return () => animation.cancel();
+  }, [view]);
   const now = store.states[store.active].now;
   const rows = allRows();
   const stats = { groups: store.followed.size, todo: rows.filter((x: any) => x.task.status === "todo").length, memory: tickStates().reduce((a: number, s: any) => a + (s.memory || []).length, 0), reminders: store.initiative.inbox.length };
   const goto = (v: View) => { setView(v); setSplit(null); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const gotoFromSidebar = (v: View) => {
+    if (v === view) { goto(v); return; }
+    sidebarDestination.current = v;
+    setView(v);
+    setSplit(null);
+  };
   const gotoMessage = (scene: string, id: string) => { store.focusMessageId = id; store.active = scene; persist(); setSplit(null); setView("messages"); };
   const openSplit = (t: any) => { store.active = t.scene; setSplit(t); setView("center"); };
   const setHeroOpen = (b: boolean) => { setHero(b); try { b ? localStorage.removeItem(HERO_KEY) : localStorage.setItem(HERO_KEY, "1"); } catch { /* ignore */ } };
-  const startDemo = () => { setHeroOpen(true); void runDemo({ goto: (v) => { setView(v); setSplit(null); }, openSplit, closeSplit: () => setSplit(null) }); };
+  const startDemo = () => { setGuideOpen(false); setHeroOpen(false); void runDemo({ goto: (v) => { setView(v); setSplit(null); }, openSplit, closeSplit: () => setSplit(null) }); };
   const startGuide = () => { returnView.current = view; setSplit(null); setGuideOpen(true); };
   const [title, sub] = TITLES[view];
 
@@ -53,8 +77,8 @@ export default function App() {
       <div className="dot-grid" />
       <div className="grain" />
       <div className="relative z-10 application-content">
-        <Navbar startGuide={startGuide} startDemo={startDemo} view={view} setView={goto} hero={hero} setHero={(b) => { setHeroOpen(b); goto("center"); }} />
-        <main id="main-content" className="mx-auto max-w-7xl px-4 pb-24">
+        <Navbar startGuide={startGuide} startDemo={startDemo} view={view} setView={gotoFromSidebar} hero={hero} setHero={(b) => { setHeroOpen(b); goto("center"); }} />
+        <main ref={main} id="main-content" className="mx-auto max-w-7xl px-4 pb-24">
           <div className="workspace-heading"><div><h1>{title}</h1><p>{sub}</p></div><span className="heading-chip">{store.track === "life" ? "LIFE" : store.track === "study" ? "STUDY" : "ALL"} · DEMO</span></div>
           {store.notice && <div role="status" className="notice-bar animate-rise"><Sparkles className="h-4 w-4 flex-none text-clay-deep" /><span className="flex-1">{store.notice}</span><button aria-label="关闭操作提示" onClick={() => { store.notice = ""; notify(); }}><X className="h-4 w-4" /></button></div>}
           {store.extractMode === "ai" && store.ai.configured === false && <p role="status" className="fallback-bar">服务端未配置模型密钥：新消息会<strong>自动回退规则模式</strong>并在消息旁标注「规则回退」。部署时在环境变量中设置 AGENTSCOPE_API_KEY（或 DEEPSEEK_API_KEY）即可启用真实 AI。</p>}
@@ -75,16 +99,7 @@ export default function App() {
           <a className="icp-line" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">蜀ICP备2026070385号</a>
         </footer>
       </div>
-      {store.demo.running && (
-        <div className="demo-bar" role="status" aria-live="polite">
-          <div className="demo-progress"><span style={{ width: `${(store.demo.step / store.demo.total) * 100}%` }} /></div>
-          <div className="flex items-start gap-3">
-            <span className="demo-step">{store.demo.step}/{store.demo.total}</span>
-            <div className="min-w-0 flex-1"><div className="demo-caption">{store.demo.caption}</div>{store.demo.sub && <div className="demo-sub">{store.demo.sub}</div>}</div>
-            <button className="demo-stop" onClick={stopDemo}><Square className="h-3 w-3" />停止</button>
-          </div>
-        </div>
-      )}
+      {store.demo.running && <DemoOverlay />}
       {guideOpen && <UsageGuide onViewChange={goto} onClose={() => { try { localStorage.setItem(GUIDE_KEY, "seen"); } catch { /* ignore */ } setGuideOpen(false); goto(returnView.current); }} />}
       <ReminderCard gotoCenter={() => goto("center")} />
     </div>

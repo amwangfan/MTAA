@@ -6,9 +6,9 @@ import { GlassCard, Badge, Button, SectionHeading, EmptyState } from "./ui";
 
 const riskInfo: any = { read_only: ["只读", "green", Eye], communicate: ["沟通类", "amber", MessageCircle], transaction: ["事务类 · 需批准", "rose", ShieldAlert] };
 const capName: any = { on_off: "开关", set_temperature: "调温", open_close: "开合", play: "播放", get_state: "读取状态" };
-const stageName: any = { intent: "提出意图", approved: "已批准", executed: "已执行", denied: "已拒绝" };
-const sourceName: any = { manual: "手动", chat: "聊天指令", initiative: "主动判断", scene: "场景" };
-const argsText = (cap: string, a: any = {}) => cap === "on_off" ? (a.on ? "打开" : "关闭") : cap === "open_close" ? (a.open ? "拉开" : "拉上") : cap === "set_temperature" ? `${a.temp}℃` : cap === "play" ? (a.play === false ? "停止" : "播放") : "";
+const stageName: any = { intent: "提出意图", approved: "已批准", executed: "已执行", denied: "已拒绝", superseded: "被新建议替代", failed: "执行失败" };
+const sourceName: any = { manual: "手动", chat: "历史群聊请求", memory: "记忆对话", initiative: "主动判断", scene: "场景" };
+const argsText = (cap: string, a: any = {}) => cap === "on_off" ? (a.on ? "打开" : "关闭") : cap === "open_close" ? (a.open ? "拉开" : "拉上") : cap === "set_temperature" ? `${a.temp}℃` : cap === "play" ? ((a.playing ?? a.play !== false) ? "播放" : "停止") : "";
 
 function Visual({ d }: { d: any }) {
   if (d.type === "light") return <div className={"dv dv-light " + (d.state.on ? "is-on" : "")}><span className="glow" /><Lightbulb className="h-9 w-9" /></div>;
@@ -66,18 +66,18 @@ export default function DevicesView() {
         ); })}
       </div>
 
-      <SectionHeading eyebrow="Approval" title="等你批准的操作" sub="来自聊天指令或主动判断的事务类操作，必须由你单次批准；批准后模拟执行，不声称真实设备已执行。" />
+      <SectionHeading eyebrow="Approval" title="等你批准的操作" sub="记忆对话结合学习偏好与设备状态提出调整建议；逐项批准后模拟执行，结果写入行动账本。" />
       <div data-tour="approval">
         {pending.length ? pending.map((p: any) => { const d = get(p.deviceId); return (
           <div key={p.id} className="approval-card animate-rise">
             <ShieldCheck className="h-6 w-6 flex-none text-rose-600" />
             <div className="min-w-0 flex-1"><div className="font-medium text-ink">{d?.name} · {capName[p.capability] || p.capability} {argsText(p.capability, p.args)}</div><div className="text-xs text-muted">{p.reason} · 来源：{sourceName[p.source] || p.source} · {fmt(p.at)}</div></div>
             <div className="flex gap-2"><Button size="sm" disabled={busy} onClick={() => run(() => act.devApprove(p.id))}><Check className="h-3 w-3" />批准一次</Button><Button size="sm" variant="ghost" disabled={busy} onClick={() => act.devReject(p.id)}><X className="h-3 w-3" />拒绝</Button></div>
-          </div>); }) : <GlassCard hover={false} className="mb-6"><EmptyState icon={ShieldCheck} title="暂无待批准操作" sub="在宿舍群里以「我」发送「回宿舍把客厅灯打开」，或让主动判断在深夜给出建议，这里会出现审批卡片。" /></GlassCard>}
+          </div>); }) : <GlassCard hover={false} className="mb-6"><EmptyState icon={ShieldCheck} title="暂无待批准操作" sub="在「记忆」对话中说「我要开始学习了」，结合学习偏好和设备状态生成调整建议。" /></GlassCard>}
       </div>
 
       <SectionHeading eyebrow="Ledger" title="行动账本" sub="意图 → 批准 → 执行 → 模拟受理回执，每一步都留痕。" />
-      <GlassCard hover={false} className="p-5">
+      <GlassCard tour="device-ledger" hover={false} className="p-5">
         {dev.ledger.length ? <ol className="timeline">{dev.ledger.slice().reverse().slice(0, 30).map((l: any, i: number) => (
           <li key={i} className={"stage-" + l.stage}>
             <span className="font-mono text-xs text-muted">{fmt(l.at)}</span>

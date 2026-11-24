@@ -42,7 +42,7 @@ export default function SplitView({ target, onBack, now, gotoSource }: { target:
   const terminal = t && ["done", "cancelled"].includes(t.status);
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div data-demo="evidence" ref={wrapRef} className="relative">
       <GlassCard hover={false} className="relative overflow-hidden p-4">
         <div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-3 ${isSug && sug.status === "pending" ? "border-whale-200 bg-whale-50" : "border-slate-200 bg-slate-50"}`}>
           {isSug && sug.status === "pending" ? (

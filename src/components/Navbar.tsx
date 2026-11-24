@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { LayoutDashboard, MessagesSquare, Brain, BellRing, PlugZap, Sparkles, Menu, X, CircleHelp, PlayCircle, RotateCcw, Info, GraduationCap, Coffee, Layers, RefreshCw } from "lucide-react";
 import { WhaleLogo } from "./ui";
 import { store, persist, notify, setTrack, resetAll, applyChoice, loadModels, currentModelLabel, TRACKS, type View, type Track } from "../store";
@@ -7,6 +7,24 @@ const trackIcon: Record<Track, any> = { study: GraduationCap, life: Coffee, all:
 
 export default function Navbar({ view, setView, hero, setHero, startGuide, startDemo }: { startGuide: () => void; startDemo: () => void; view: View; setView: (v: View) => void; hero: boolean; setHero: (b: boolean) => void }) {
   const [open, setOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const [selection, setSelection] = useState<{ top: number; height: number } | null>(null);
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const active = nav?.querySelector<HTMLButtonElement>('button[aria-current="page"]');
+    if (!nav || !active) return;
+
+    const measure = () => {
+      const top = active.offsetTop;
+      const height = active.offsetHeight;
+      setSelection(previous => previous?.top === top && previous.height === height ? previous : { top, height });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    nav.querySelectorAll('button').forEach(button => observer.observe(button));
+    return () => observer.disconnect();
+  }, [view]);
   const ai = store.ai;
   const unread = store.initiative.inbox.filter((r: any) => !r.read).length;
   const pending = (store.states.home?.devices?.pending || []).filter((p: any) => p.status === "needs_approval").length;
@@ -19,13 +37,16 @@ export default function Navbar({ view, setView, hero, setHero, startGuide, start
     {open && <button className="sidebar-backdrop" aria-label="关闭导航遮罩" onClick={() => setOpen(false)} />}
     <aside id="primary-sidebar" aria-label="主导航" className={"primary-sidebar " + (open ? "is-open" : "")}>
       <div className="sidebar-brand"><span className="sidebar-logo"><WhaleLogo className="h-6 w-6" /></span><div><strong>WHALE</strong><small>消息有着落</small></div><button className="sidebar-close" aria-label="关闭导航" onClick={() => setOpen(false)}><X size={20} /></button></div>
-      <button className="sidebar-demo" onClick={() => { setOpen(false); startDemo(); }} disabled={store.demo.running}><PlayCircle size={18} /><span>{store.demo.running ? "演示进行中…" : "一键自动演示"}</span><small>30 秒</small></button>
+      <button className="sidebar-demo" onClick={() => { setOpen(false); startDemo(); }} disabled={store.demo.running}><PlayCircle size={18} /><span>{store.demo.running ? "演示进行中…" : "一键自动演示"}</span><small>32 秒</small></button>
       <p className="sidebar-caption">场景</p>
       <div className="track-switch" role="radiogroup" aria-label="场景">
         {(Object.keys(TRACKS) as Track[]).map((t) => { const Icon = trackIcon[t]; return <button key={t} role="radio" aria-checked={store.track === t} disabled={store.busy || store.demo.running} title={TRACKS[t].desc} onClick={() => setTrack(t)}><Icon size={14} />{TRACKS[t].label}</button>; })}
       </div>
       <p className="sidebar-caption">工作空间</p>
-      <nav>{tabs.map((t) => <button key={t.id} aria-current={view === t.id ? "page" : undefined} onClick={() => { setView(t.id); setOpen(false); }}><t.icon size={18} /><span>{t.label}</span>{counts[t.id] ? <em className="nav-count">{counts[t.id]}</em> : null}</button>)}</nav>
+      <nav ref={navRef} className={selection ? "workspace-nav has-selection" : "workspace-nav"}>
+        {selection && <span aria-hidden="true" className="workspace-nav-selection" style={{ height: selection.height, transform: `translateY(${selection.top}px)` }} />}
+        {tabs.map((t) => <button key={t.id} aria-current={view === t.id ? "page" : undefined} onClick={() => { setView(t.id); setOpen(false); }}><t.icon size={18} /><span>{t.label}</span>{counts[t.id] ? <em className="nav-count">{counts[t.id]}</em> : null}</button>)}
+      </nav>
       <div className="sidebar-tools">
         <label htmlFor="understanding-mode">消息理解模式</label>
         <select id="understanding-mode" aria-label="消息理解模式" disabled={store.busy || store.demo.running} value={store.extractMode} onChange={(e) => { store.extractMode = e.target.value as "ai" | "rules"; persist(); notify(); }}><option value="ai">AI 整理（真实模型）</option><option value="rules">规则演示（离线）</option></select>

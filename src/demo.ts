@@ -1,68 +1,79 @@
-// 一键自动演示（约 30 秒）：消息 → 待办建议 → 确认 → 溯源 → 主动提醒 → 设备联动。
-// 演示从初始数据开始，并临时使用规则引擎保证节奏稳定；结束后恢复你原来的理解模式。
+// Eight steps, four seconds each (paused time excluded). Always rules-only.
 import * as E from "../lib/engine.js";
-import { store, notify, persist, resetData, sendMessage, moveClock, act, setTrack, type View } from "./store";
+import { DemoPlayback, DEMO_STEP_MS } from "../lib/demo-playback.js";
+import { store, notify, persist, resetData, sendMessage, moveClock, act, setTrack, setAutoplay, requestStudyEnvironment, type View } from "./store";
 
 type Nav = { goto: (v: View) => void; openSplit: (t: any) => void; closeSplit: () => void };
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-let cancelled = false;
-export function stopDemo() { cancelled = true; store.demo.running = false; store.typing = null; notify(); }
-
-const STEPS = 8;
-function caption(step: number, text: string, sub = "") { store.demo = { running: true, step, total: STEPS, caption: text, sub }; notify(); }
-async function wait(ms: number) { const end = Date.now() + ms; while (Date.now() < end) { if (cancelled) throw new Error("stopped"); await sleep(80); } }
-function scrollTo(sel: string) { document.querySelector(sel)?.scrollIntoView({ behavior: "smooth", block: "center" }); }
+let playback: DemoPlayback | null = null;
+export function stopDemo() { playback?.stop(); store.demo.running=false; store.typing=null; notify(); }
+export function pauseDemo() { if(!playback)return; playback.paused=!playback.paused; store.demo.paused=playback.paused; notify(); }
 
 export async function runDemo(nav: Nav) {
-  if (store.demo.running || store.busy) return;
-  cancelled = false;
-  const prevMode = store.extractMode;
+  // A stopped run owns cleanup until its outstanding wait has exited.
+  if(playback || store.busy)return;
+  const run=new DemoPlayback(); playback=run;
+  const prevMode=store.extractMode;
+  const step=(n:number,caption:string,sub:string,target:string,focusLabel:string)=>{
+    store.demo={running:true,paused:run.paused,step:n,total:8,caption,sub,target,focusLabel}; notify();
+  };
+  const wait=(ms=DEMO_STEP_MS)=>run.wait(ms);
   try {
-    resetData(); setTrack("study"); store.extractMode = "rules"; store.initiative.enabled = true; store.reminderOpen = false;
-    nav.closeSplit();
+    setAutoplay(false); resetData(); setTrack("study"); store.extractMode="rules";
+    store.initiative.enabled=true; store.reminderOpen=false; nav.closeSplit();
 
-    caption(1, "课程群里，助教发来一条新通知", "混在闲聊和表情包之间，最容易被刷过去");
-    store.active = "course"; nav.goto("messages"); await wait(900);
-    store.typing = { scene: "course", author: "助教" }; notify(); await wait(1600);
-    const text = "数电第三次实验报告明天18:00前提交到学习通，命名：学号-姓名-实验3";
-    await sendMessage(text, "助教", { forceRules: true }); await wait(1800);
+    store.active="course";
+    await sendMessage("数电第三次实验报告明天18:00前提交到学习通，命名：学号-姓名-实验3","助教",{forceRules:true});
+    const s=store.states.course;
+    nav.goto("messages");
+    step(1,"群里收到一条作业通知","先看原文：明天 18:00 前，提交实验报告到学习通。",`[data-message-id="${s.messages.at(-1)?.id}"]`,"新收到的通知 · 原文");
+    await wait();
 
-    caption(2, "Whale 读懂通知，生成「待办建议」", "不直接替你做决定：附原文证据，等你确认");
-    nav.goto("center"); await wait(500); scrollTo('[data-tour="suggestions"]'); await wait(2600);
-
-    const s = store.states.course; const sug = s.suggestions.filter((g: any) => g.status === "pending").at(-1);
-    caption(3, "一键确认，进入跨群日程", "也可以删除；删除的建议能随时恢复");
-    let taskId = "";
-    if (sug) { const r: any = act.addSug("course", sug.id); taskId = r?.taskId || ""; }
-    await wait(2200);
-
-    caption(4, "点开事项：原文高亮 + 编号连线，每个字段都可追溯", "时间精度、地点、要求、变化记录一目了然");
-    if (taskId) nav.openSplit({ type: "task", id: taskId, scene: "course" });
-    await wait(4200); nav.closeSplit();
-
-    caption(5, "时间快进到截止前 1 小时，主动判断开始工作", "静默时段 / 每日配额 / 反馈过滤 —— 宁可漏提醒，不乱打扰");
-    const t = s.tasks.find((x: any) => x.id === taskId);
-    nav.goto("initiative"); await wait(900);
-    if (t) await moveClock(E.reminderAt(t));
-    persist(); await wait(1800);
-
-    caption(6, "提醒以手机通知的样子到达", "可以「知道了」，也可以「不再提醒这类」");
-    store.reminderOpen = true; notify(); await wait(3200);
-
-    caption(7, "切到生活场景：在宿舍群里说一句话", "Whale 识别出设备指令，但不会擅自执行");
-    setTrack("life"); store.active = "home"; nav.goto("messages"); await wait(900);
-    store.typing = { scene: "home", author: "我" }; notify(); await wait(1200);
-    await sendMessage("我快到宿舍了，帮我把客厅灯打开", "我", { forceRules: true }); await wait(1600);
-
-    caption(8, "高风险操作需要你单次批准，执行结果写入行动账本", "设备为模拟受理，接口已预留 HomeAssistant 适配");
-    nav.goto("devices"); await wait(1500);
-    const pending = store.states.home.devices.pending.filter((p: any) => p.status === "needs_approval").at(-1);
-    if (pending) { scrollTo('[data-tour="approval"]'); await wait(1200); await act.devApprove(pending.id); }
-    await wait(2600);
-
-    store.demo = { running: false, step: STEPS, total: STEPS, caption: "", sub: "" };
-    store.notice = "演示完成。现在轮到你：去「消息来源」发一条自己的通知，或在侧栏切换「AI整理」体验真实模型。";
     nav.goto("center");
-  } catch { /* stopped */ }
-  finally { store.extractMode = prevMode; store.typing = null; store.demo.running = false; persist(); notify(); }
+    const sug=s.suggestions.filter((g:any)=>g.status==="pending").at(-1);
+    if(!sug)throw new Error('missing suggestion');
+    step(2,"通知已整理成待办建议","这里有任务、来源群和截止时间；现在还没有加入待办。",`[data-demo-suggestion="course:${sug.id}"]`,"新生成的待办建议");
+    await wait();
+
+    step(3,"确认建议，建立自己的待办","重要通知先成为建议，由你决定是否加入日程。",`[data-demo-add="course:${sug.id}"]`,"即将模拟点击：添加待办");
+    await wait(DEMO_STEP_MS/2);
+    const result:any=act.addSug("course",sug.id),taskId=result?.taskId;
+    if(!taskId)throw new Error('missing task');
+    step(3,"已确认，待办加入清单","通知 → 建议 → 确认，现在可以在清单中找到这件事。",`[data-demo-task="course:${taskId}"]`,"确认后的待办");
+    await wait(DEMO_STEP_MS/2);
+
+    nav.openSplit({type:"task",id:taskId,scene:"course"});
+    step(4,"每条待办都能找到原文","左边原消息，右边整理结果；编号与连线说明信息从哪来。",'[data-demo="evidence"]',"原文与整理结果");
+    await wait(); nav.closeSplit();
+
+    nav.goto("initiative");
+    const t=s.tasks.find((x:any)=>x.id===taskId);
+    if(t)await moveClock(E.reminderAt(t));
+    store.reminderOpen=false; persist();
+    step(5,"时钟快进到截止前 1 小时","演示快进时间，检查是否需要提醒，不用真的等到明天。",'[data-tour="clock"]',"已快进的演示时钟");
+    await wait();
+
+    store.reminderOpen=true;
+    step(6,"截止提醒到了","模拟通知会说明提醒内容；可以确认收到，或关闭这类提醒。",'.push-wrap',"刚到达的截止提醒");
+    await wait(); store.reminderOpen=false;
+
+    setTrack("life"); store.active="home";
+    requestStudyEnvironment("我要开始学习了","exam");
+    nav.goto("memory");
+    step(7,"记忆对话，准备你的学习环境","结合平常的学习偏好和当前设备状态，建议开灯、开空调并调至 24℃。",'[data-demo="study-environment"]',"学习偏好与设备状态");
+    await wait();
+
+    nav.goto("devices");
+    step(8,"按学习习惯调整设备","批准本次调整后，设备状态与行动账本同步更新；这里展示模拟执行。",'[data-tour="approval"]',"单次批准区域");
+    await wait(DEMO_STEP_MS/2);
+    for(const id of store.studyPlan?.actionIds||[])await act.devApprove(id);
+    step(8,"学习环境已按偏好调整（模拟）","灯已打开，空调已开启并设为 24℃；每项调整都能查看记忆来源和执行记录。",'[data-tour="device-ledger"]',"行动账本 · 模拟回执");
+    await wait(DEMO_STEP_MS/2);
+    store.notice="演示完成。去「消息来源」发一条自己的通知，或重新演示并随时暂停。";
+    nav.goto("center");
+  } catch {
+    if(!run.stopped)store.notice="演示中断，已恢复普通操作。可以重新开始演示。";
+  } finally {
+    store.extractMode=prevMode; store.typing=null; store.demo.running=false; store.demo.paused=false;
+    playback=null; persist(); notify();
+  }
 }

@@ -3,6 +3,7 @@ import * as E from "../lib/engine.js";
 import * as M from "../lib/memory.js";
 import * as D from "../lib/devices.js";
 import * as I from "../lib/initiative.js";
+import {planStudyEnvironment} from "../lib/study-environment.js";
 import { processAIMessage, processMemoryAI, decideInitiativeAI } from "../lib/ai-client.js";
 import { apiFetch, setAIChoice } from "./api";
 
@@ -34,10 +35,11 @@ export const store = {
   focusMessageId: null as string | null,
   notice: "",
   memoryAIEnabled: false,
+  studyPlan: null as any,
   selected: null as string | null,
   ai: { configured: null as boolean | null, model: null as string | null, provider: null as string | null, limits: null as any, lastFallback: "", providers: [] as ProviderInfo[], choice: { provider: "", model: "" }, loadingModels: false },
   typing: null as null | { scene: string; author: string },
-  demo: { running: false, step: 0, total: 0, caption: "", sub: "" },
+  demo: { running: false, paused: false, step: 0, total: 0, caption: "", sub: "", target: "", focusLabel: "" },
   reminderOpen: false,
 };
 
@@ -76,6 +78,8 @@ Object.values(store.states).forEach((s: any) => {
   else if (s.noticeParserVersion !== 1) E.rebuildPublisherTasks(s);
 });
 linkDevices();
+// Retain history but retire unapproved requests produced by the old group-chat path.
+for(const p of store.states.home.devices.pending){if(p.source==='chat'&&p.status==='needs_approval')p.status='superseded';}
 const latestClock = Math.max(...Object.values(store.states).map((s: any) => s.now));
 Object.values(store.states).forEach((s: any) => { s.now = latestClock; });
 if (!store.followed.size) store.followed = new Set(TRACKS[store.track].groups);
@@ -184,8 +188,7 @@ export async function sendMessage(text: string, author: string, opts: { forceRul
     if (last) {
       M.extractInto(s, last, "rules");
       if (aiLive() && store.memoryAIEnabled) void processMemoryAI(s, last, { fetcher: apiFetch }).then(() => { persist(); notify(); });
-      const cmd = D.detectCommand(text);
-      if (cmd && E.publishers(s).includes(author)) { const p = D.propose(s, { ...cmd, source: "chat", reason: "聊天指令：" + text, evidence: [last.id] } as any); if (p) last.deviceAction = p.id; }
+      // Group notifications supply tasks/memories, never device-control authority.
     }
   } catch { outcome = { kind: "error", text: "整理未完成，消息已保留，请重试。" }; }
   store.busy = false; persist(); notify();
@@ -205,7 +208,7 @@ export function resetData() {
   setAutoplay(false);
   store.states = {}; freshAll(); store.initiative = I.initInitiative(); store.selected = null; store.focusMessageId = null;
   store.followed = new Set(TRACKS[store.track].groups); store.active = TRACKS[store.track].groups[0];
-  store.notice = ""; store.reminderOpen = false; store.ai.lastFallback = "";
+  store.notice = ""; store.reminderOpen = false; store.ai.lastFallback = ""; store.studyPlan=null;
   persist(); notify();
 }
 export function resetAll() {
@@ -214,6 +217,11 @@ export function resetAll() {
 }
 
 // 便捷动作
+export function requestStudyEnvironment(question:string,profileId:string){
+  const plan=planStudyEnvironment(state(),{question,profileId});
+  if(plan){store.studyPlan=plan;persist();notify();}
+  return plan;
+}
 export const act = {
   addSug: (scene: string, id: string) => { const r = E.applySuggestion(store.states[scene], id, "add"); persist(); notify(); return r; },
   dismissSug: (scene: string, id: string) => { E.applySuggestion(store.states[scene], id, "dismiss"); persist(); notify(); },

@@ -26,12 +26,12 @@ export default function SummaryView({ openSplit, goto }: { openSplit: (t: any) =
           <Badge tone="whale">{pending.length} 项待确认</Badge>
         </div>
         {pending.length ? pending.map((g: any) => (
-          <div key={`${g.group}:${g.id}`} className="sug-row animate-rise">
+          <div key={`${g.group}:${g.id}`} data-demo-suggestion={`${g.group}:${g.id}`} className="sug-row animate-rise">
             <button className="min-w-0 flex-1 text-left" onClick={() => openSplit({ type: "suggestion", id: g.id, scene: g.group })}>
               <div className="truncate font-medium text-slate-800">{g.title}</div>
               <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500"><span>{scName(g.group)} · {g.author} · {fmt(g.time)}</span>{g.due ? <span className="text-ink-2">· 截止 {fmt(g.due)}</span> : <span>· 截止待确认</span>}<span className={g.origin === "ai" ? "origin-tag is-ai" : "origin-tag"}>{g.origin === "ai" ? <><Sparkles className="h-3 w-3" />AI提取</> : <><Cpu className="h-3 w-3" />规则引擎</>}</span></div>
             </button>
-            <button title="直接添加" aria-label={`添加待办：${g.title}`} onClick={() => act.addSug(g.group, g.id)} className="grid h-9 w-9 flex-none place-items-center rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white"><Plus className="h-5 w-5" /></button>
+            <button data-demo-add={`${g.group}:${g.id}`} title="直接添加" aria-label={`添加待办：${g.title}`} onClick={() => act.addSug(g.group, g.id)} className="grid h-9 w-9 flex-none place-items-center rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white"><Plus className="h-5 w-5" /></button>
           </div>
         )) : <EmptyState icon={Inbox} title="没有待确认的建议" sub="群里出现新的作业、活动或变更时，Whale 会先在这里给出建议，等你确认。" action={goto && <Button size="sm" variant="soft" onClick={() => goto("messages")}><MessagesSquare className="h-3.5 w-3.5" />去发一条通知</Button>} />}
         {handled.length > 0 && (
@@ -68,7 +68,7 @@ export default function SummaryView({ openSplit, goto }: { openSplit: (t: any) =
         const body = (
           <div>
             {items.map(({ scene, task }: any) => (
-              <button key={`${scene.id}:${task.id}`} onClick={() => openSplit({ type: "task", id: task.id, scene: scene.id })}
+              <button data-demo-task={`${scene.id}:${task.id}`} key={`${scene.id}:${task.id}`} onClick={() => openSplit({ type: "task", id: task.id, scene: scene.id })}
                 className={`mb-2 grid w-full grid-cols-[1fr_auto] items-center gap-2 rounded-2xl border bg-white/80 p-3 text-left hover:border-whale-300 md:grid-cols-[1fr_auto_auto] ${key === "overdue" ? "border-rose-200" : "border-slate-200"}`}>
                 <span className="flex min-w-0 flex-wrap items-center gap-2"><span className="min-w-0 truncate font-medium text-slate-800">{task.title}</span><Badge tone="slate">{scName(scene.id)}</Badge></span>
                 <span className="text-xs text-slate-500">{dueText(task)}</span>
