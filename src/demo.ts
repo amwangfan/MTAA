@@ -1,6 +1,6 @@
-// Eight steps, four seconds each (paused time excluded). Always rules-only.
+// Eight four-second steps, including transitions. Paused time is excluded.
 import * as E from "../lib/engine.js";
-import { DemoPlayback, DEMO_STEP_MS } from "../lib/demo-playback.js";
+import { DemoPlayback, DEMO_STEP_COUNT, DEMO_READING_MS, DEMO_TRANSITION_MS } from "../lib/demo-playback.js";
 import { store, notify, persist, resetData, sendMessage, moveClock, act, setTrack, setAutoplay, requestStudyEnvironment, type View } from "./store";
 
 type Nav = { goto: (v: View) => void; openSplit: (t: any) => void; closeSplit: () => void };
@@ -13,63 +13,85 @@ export async function runDemo(nav: Nav) {
   if(playback || store.busy)return;
   const run=new DemoPlayback(); playback=run;
   const prevMode=store.extractMode;
-  const step=(n:number,caption:string,sub:string,target:string,focusLabel:string)=>{
-    store.demo={running:true,paused:run.paused,step:n,total:8,caption,sub,target,focusLabel}; notify();
+  const fadeMs = DEMO_TRANSITION_MS / 2;
+  const actionAt = DEMO_READING_MS / 2;
+  const step=async(n:number,caption:string,sub:string,target:string,focusLabel:string)=>{
+    const entering = store.demo.running && store.demo.step !== n;
+    store.demo = {
+      running: true, paused: run.paused, phase: entering ? "entering" : "showing",
+      step: n, total: DEMO_STEP_COUNT, caption, sub, target, focusLabel,
+    };
+    notify();
+    if (entering) {
+      await run.wait(fadeMs);
+      store.demo.phase = "showing";
+      notify();
+    }
   };
-  const wait=(ms=DEMO_STEP_MS)=>run.wait(ms);
+  const leave=async(readingMs=DEMO_READING_MS)=>{
+    await run.wait(readingMs);
+    store.demo.phase="leaving";
+    notify();
+    await run.wait(fadeMs);
+  };
   try {
     setAutoplay(false); resetData(); setTrack("study"); store.extractMode="rules";
-    store.initiative.enabled=true; store.reminderOpen=false; nav.closeSplit();
+    store.initiative.enabled=true; nav.closeSplit();
 
     store.active="course";
     await sendMessage("数电第三次实验报告明天18:00前提交到学习通，命名：学号-姓名-实验3","助教",{forceRules:true});
     const s=store.states.course;
     nav.goto("messages");
-    step(1,"群里收到一条作业通知","先看原文：明天 18:00 前，提交实验报告到学习通。",`[data-message-id="${s.messages.at(-1)?.id}"]`,"新收到的通知 · 原文");
-    await wait();
+    await step(1,"群里收到一条作业通知","先看原文：明天 18:00 前，提交实验报告到学习通。",`[data-message-id="${s.messages.at(-1)?.id}"]`,"新收到的通知 · 原文");
+    await leave();
 
     nav.goto("center");
     const sug=s.suggestions.filter((g:any)=>g.status==="pending").at(-1);
     if(!sug)throw new Error('missing suggestion');
-    step(2,"通知已整理成待办建议","这里有任务、来源群和截止时间；现在还没有加入待办。",`[data-demo-suggestion="course:${sug.id}"]`,"新生成的待办建议");
-    await wait();
+    await step(2,"通知已整理成待办建议","铃铛里可以查看任务、来源群和截止时间，等你确认。",`[data-demo-suggestion="course:${sug.id}"]`,"新生成的待办建议");
+    await leave();
 
-    step(3,"确认建议，建立自己的待办","重要通知先成为建议，由你决定是否加入日程。",`[data-demo-add="course:${sug.id}"]`,"即将点击：添加待办");
-    await wait(DEMO_STEP_MS/2);
+    await step(3,"确认建议，建立自己的待办","重要通知先成为建议，由你决定是否加入日程。",`[data-demo-add="course:${sug.id}"]`,"即将模拟点击：添加待办");
+    await run.wait(actionAt);
     const result:any=act.addSug("course",sug.id),taskId=result?.taskId;
     if(!taskId)throw new Error('missing task');
-    step(3,"已确认，待办加入清单","通知 → 建议 → 确认，现在可以在清单中找到这件事。",`[data-demo-task="course:${taskId}"]`,"确认后的待办");
-    await wait(DEMO_STEP_MS/2);
+    await step(3,"已确认，待办加入清单","通知 → 建议 → 确认，现在可以在清单中找到这件事。",`[data-demo-task="course:${taskId}"]`,"确认后的待办");
+    await leave(DEMO_READING_MS-actionAt);
 
     nav.openSplit({type:"task",id:taskId,scene:"course"});
-    step(4,"每条待办都能找到原文","左边原消息，右边整理结果；编号与连线说明信息从哪来。",'[data-demo="evidence"]',"原文与整理结果");
-    await wait(); nav.closeSplit();
+    await step(4,"每条待办都能找到原文","左边原消息，右边整理结果；编号与连线说明信息从哪来。",'[data-demo="evidence"]',"原文与整理结果");
+    await leave(); nav.closeSplit();
 
     nav.goto("initiative");
     const t=s.tasks.find((x:any)=>x.id===taskId);
     if(t)await moveClock(E.reminderAt(t));
-    store.reminderOpen=false; persist();
-    step(5,"时钟快进到截止前 1 小时","演示快进时间，检查是否需要提醒，不用真的等到明天。",'[data-tour="clock"]',"已快进的演示时钟");
-    await wait();
+    persist();
+    await step(5,"时钟快进到截止前 1 小时","演示快进时间，检查是否需要提醒，不用真的等到明天。",'[data-tour="clock"]',"已快进的演示时钟");
+    await leave();
 
-    store.reminderOpen=true;
-    step(6,"截止提醒到了","通知会说明提醒内容；可以确认收到，或关闭这类提醒。",'.push-wrap',"刚到达的截止提醒");
-    await wait(); store.reminderOpen=false;
+    await step(6,"截止提醒到了","提醒弹出 3 秒后收回铃铛，点击铃铛仍可查看。",'.push-wrap',"刚到达的截止提醒");
+    await leave();
 
     setTrack("life"); store.active="home";
     requestStudyEnvironment("我要开始学习了","exam");
     nav.goto("memory");
-    step(7,"记忆对话，准备你的学习环境","结合平常的学习偏好和当前设备状态，建议开灯、开空调并调至 24℃。",'[data-demo="study-environment"]',"学习偏好与设备状态");
-    await wait();
+    await step(7,"记忆对话，准备你的学习环境","结合平常的学习偏好和当前设备状态，建议开灯、开空调并调至 24℃。",'[data-demo="study-environment"]',"学习偏好与设备状态");
+    await leave();
 
     nav.goto("devices");
-    step(8,"按学习习惯调整设备","批准本次调整后，设备状态与行动账本同步更新；这里展示执行过程。",'[data-tour="approval"]',"单次批准区域");
-    await wait(DEMO_STEP_MS/2);
+    await step(8,"按学习习惯调整设备","批准本次调整后，设备状态与行动账本同步更新；这里展示模拟执行。",'[data-tour="approval"]',"单次批准区域");
+    await run.wait(actionAt);
     for(const id of store.studyPlan?.actionIds||[])await act.devApprove(id);
-    step(8,"学习环境已按偏好调整","灯已打开，空调已开启并设为 24℃；每项调整都能查看记忆来源和执行记录。",'[data-tour="device-ledger"]',"行动账本 · 回执");
-    await wait(DEMO_STEP_MS/2);
+    await step(8,"学习环境已按偏好调整（模拟）","灯已打开，空调已开启并设为 24℃；每项调整都能查看记忆来源和执行记录。",'[data-tour="device-ledger"]',"行动账本 · 模拟回执");
+    await leave(DEMO_READING_MS-actionAt);
     store.notice="演示完成。去「消息来源」发一条自己的通知，或重新演示并随时暂停。";
     nav.goto("center");
+    store.demo.phase = "entering";
+    store.demo.target = "";
+    store.demo.caption = "演示完成";
+    store.demo.sub = "可以去「消息来源」，试着发一条自己的通知。";
+    notify();
+    await run.wait(fadeMs);
   } catch {
     if(!run.stopped)store.notice="演示中断，已恢复普通操作。可以重新开始演示。";
   } finally {

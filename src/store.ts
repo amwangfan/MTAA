@@ -12,7 +12,7 @@ export const KEY = "whale.visual-demo.v2";
 export const CHAT_KEY = "whale.memory-chat.v1";
 export const MODEL_KEY = "whale.ai-choice.v1";
 export type ProviderInfo = { provider: string; label: string; models: string[]; live: boolean; default: string | null; error?: string | null };
-export type View = "center" | "messages" | "memory" | "initiative" | "devices" | "about";
+export type View = "home" | "center" | "messages" | "memory" | "initiative" | "devices" | "about";
 export type Track = "study" | "life" | "all";
 export const TRACKS: Record<Track, { label: string; desc: string; groups: string[] }> = {
   study: { label: "学习", desc: "课程、项目、实验室", groups: ["course", "project", "lab"] },
@@ -40,8 +40,7 @@ export const store = {
   selected: null as string | null,
   ai: { configured: null as boolean | null, model: null as string | null, provider: null as string | null, limits: null as any, lastFallback: "", providers: [] as ProviderInfo[], choice: { provider: "", model: "" }, loadingModels: false },
   typing: null as null | { scene: string; author: string },
-  demo: { running: false, paused: false, step: 0, total: 0, caption: "", sub: "", target: "", focusLabel: "" },
-  reminderOpen: false,
+  demo: { running: false, paused: false, phase: "showing" as "entering" | "showing" | "leaving", step: 0, total: 0, caption: "", sub: "", target: "", focusLabel: "" },
 };
 
 // 设备是宿舍里的一套：所有群共享同一个设备对象（聊天指令/主动判断/手动控制都作用在这里）。
@@ -136,11 +135,15 @@ export function setTrack(t: Track) {
 
 // 时钟 + 节拍（AI 已配置时走 /api/v1/initiative，失败回退规则判断并标注）
 let ticking = false; let playTimer: any = null;
+let clockVersion = 0;
 async function runTicks(from: number, to: number) {
+  const version = clockVersion;
   const ini = store.initiative; const iv = ini.interval * 60000; const steps = Math.floor((to - from) / iv); const ts = tickStates();
   const at = async (t: number) => {
+    if (version !== clockVersion) return;
     const tryAI = aiLive();
     const ai = tryAI ? await decideInitiativeAI(I.buildContext(ts, t, ini), { fetcher: apiFetch }) : null;
+    if (version !== clockVersion) return;
     const entry: any = I.tick(ts, t, ini, { aiDecision: ai });
     if (tryAI && !ai) { entry.fallback = true; store.ai.lastFallback = "主动判断请求失败"; }
   };
@@ -148,9 +151,16 @@ async function runTicks(from: number, to: number) {
 }
 export async function moveClock(to: number) {
   if (ticking) return; ticking = true;
-  const before = store.initiative.inbox.length;
-  try { const from = state().now; Object.values(store.states).forEach((s: any) => { s.now = to; }); await runTicks(from, to); if (store.initiative.inbox.length > before) store.reminderOpen = true; notify(); }
+  try { const from = state().now; Object.values(store.states).forEach((s: any) => { s.now = to; }); await runTicks(from, to); notify(); }
   finally { ticking = false; }
+}
+export function resetClock() {
+  clockVersion += 1;
+  setAutoplay(false);
+  Object.values(store.states).forEach((s: any) => { s.now = E.BASE; });
+  store.initiative.lastTick = E.BASE;
+  persist();
+  notify();
 }
 export function setAutoplay(on: boolean) {
   store.initiative.autoplay = on; clearInterval(playTimer);
@@ -209,7 +219,7 @@ export function resetData() {
   setAutoplay(false);
   store.states = {}; freshAll(); store.initiative = I.initInitiative(); store.selected = null; store.focusMessageId = null;
   store.followed = new Set(TRACKS[store.track].groups); store.active = TRACKS[store.track].groups[0];
-  store.notice = ""; store.reminderOpen = false; store.ai.lastFallback = ""; store.studyPlan=null;
+  store.notice = ""; store.ai.lastFallback = ""; store.studyPlan=null;
   persist(); notify();
 }
 export function resetAll() {

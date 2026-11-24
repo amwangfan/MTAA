@@ -1,14 +1,16 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Pause, Play, Square } from "lucide-react";
-import { DEMO_STEP_MS } from "../../lib/demo-playback.js";
+import { DEMO_STEP_MS, DEMO_TRANSITION_MS } from "../../lib/demo-playback.js";
 import { store } from "../store";
 import { pauseDemo, stopDemo } from "../demo";
 
 export default function DemoOverlay() {
   const demo=store.demo;
+  const entering = demo.phase === "entering";
   const [box,setBox]=useState<{left:number;top:number;width:number;height:number}|null>(null);
   const panel=useRef<HTMLDivElement>(null);
   useLayoutEffect(()=>{
+    if (!demo.target) return;
     let observer:ResizeObserver|undefined,frame=0;
     const measure=()=>{
       const el=document.querySelector(demo.target);
@@ -27,7 +29,7 @@ export default function DemoOverlay() {
       const el=document.querySelector(demo.target);
       if(el){
         // Fixed notifications already have a screen position; do not scroll them.
-        if(!el.closest('.push-wrap')){
+        if(!el.closest('.notification-center')){
           const available=(panel.current?.getBoundingClientRect().top??innerHeight-170)-48;
           el.scrollIntoView({block:el.getBoundingClientRect().height>available?'start':'center',behavior:'instant'});
           const r=el.getBoundingClientRect(),limit=(panel.current?.getBoundingClientRect().top??innerHeight-170)-24;
@@ -41,7 +43,7 @@ export default function DemoOverlay() {
     frame=requestAnimationFrame(()=>{frame=requestAnimationFrame(locate);});
     window.addEventListener('resize',measure); window.addEventListener('scroll',measure,true);
     return()=>{cancelAnimationFrame(frame);observer?.disconnect();window.removeEventListener('resize',measure);window.removeEventListener('scroll',measure,true);};
-  },[demo.target]);
+  },[demo.target, entering]);
   useEffect(()=>{
     const content=document.querySelector<HTMLElement>('.application-content');
     const previous=content?.inert;
@@ -52,21 +54,34 @@ export default function DemoOverlay() {
     panel.current?.querySelector<HTMLButtonElement>('[data-demo-pause]')?.focus({preventScroll:true});
     return()=>{if(content)content.inert=previous||false;document.removeEventListener('keydown',key);if(prev?.isConnected)prev.focus({preventScroll:true});};
   },[]);
-  return <div className="demo-overlay">
+  const transition = `is-${demo.phase}`;
+  const motionStyle = {
+    "--demo-step-duration": `${DEMO_STEP_MS}ms`,
+    "--demo-transition-duration": `${DEMO_TRANSITION_MS / 2}ms`,
+    "--demo-play-state": demo.paused ? "paused" : "running",
+  } as CSSProperties;
+  return <div className={`demo-overlay ${transition}`} style={motionStyle}>
     <div className="demo-blocker" aria-hidden="true" />
-    <div
-      key={demo.step}
-      className="demo-shading"
-      style={{ animationDuration: `${DEMO_STEP_MS}ms`, animationPlayState: demo.paused ? 'paused' : 'running' }}
-      aria-hidden="true"
-    >
+    {demo.target && <div className="demo-shading" aria-hidden="true">
       {box ? <div className="demo-spotlight" style={box} /> : <div className="demo-dim" />}
-    </div>
+    </div>}
+    {demo.phase !== "showing" && <div className={`demo-curtain ${transition}`} aria-hidden="true" />}
     <div ref={panel} className="demo-bar" role="region" aria-label="自动演示控制">
-      <div className="demo-progress" aria-hidden="true"><span style={{ ["--p" as any]: demo.step / demo.total }}/></div>
+      <div className="demo-progress" aria-hidden="true">
+        {Array.from({ length: demo.total }, (_, index) => (
+          <span key={index} className="demo-progress-segment">
+            <span className="demo-progress-fill" style={{ animationDelay: `${index * DEMO_STEP_MS}ms` }} />
+          </span>
+        ))}
+      </div>
       <div className="flex items-start gap-3">
         <span className="demo-step">{demo.step}/{demo.total}</span>
-        <div className="min-w-0 flex-1" aria-live="polite" aria-atomic="true"><div className="demo-caption">{demo.caption}</div><div className="demo-sub">{demo.sub}</div></div>
+        <div className="min-w-0 flex-1" aria-live="polite" aria-atomic="true">
+          <div className={`demo-caption-motion ${transition}`}>
+            <div className="demo-caption">{demo.caption}</div>
+            <div className="demo-sub">{demo.sub}</div>
+          </div>
+        </div>
         <div className="demo-controls">
           <button className="demo-stop" onClick={stopDemo}><Square className="h-3 w-3"/>停止</button>
           <button data-demo-pause className="demo-stop demo-pause" onClick={pauseDemo} aria-pressed={demo.paused}>{demo.paused?<Play className="h-3 w-3"/>:<Pause className="h-3 w-3"/>}{demo.paused?'继续':'暂停'}</button>

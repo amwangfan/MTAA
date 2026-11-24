@@ -1,13 +1,18 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {DemoPlayback,DEMO_STEP_MS} from '../lib/demo-playback.js';
+import { DemoPlayback, DEMO_STEP_COUNT, DEMO_READING_MS, DEMO_TRANSITION_MS } from '../lib/demo-playback.js';
 
-test('eight steps each receive four seconds of playback',async()=>{
+test('eight steps include 1.5-second transitions within a 32-second playback',async()=>{
   let time=0;
   const run=new DemoPlayback({now:()=>time,sleep:async ms=>{time+=ms;}});
-  assert.equal(DEMO_STEP_MS,4000);
-  for(let step=0;step<8;step++)await run.wait(DEMO_STEP_MS);
-  assert(time>=32000&&time<32500);
+  assert.equal(DEMO_READING_MS, 2500);
+  assert.equal(DEMO_TRANSITION_MS, 1500);
+  for (let step=0; step<DEMO_STEP_COUNT; step++) {
+    await run.wait(DEMO_READING_MS);
+    await run.wait(DEMO_TRANSITION_MS / 2);
+    await run.wait(DEMO_TRANSITION_MS / 2);
+  }
+  assert.equal(time, 32000);
 });
 test('paused time is excluded and resuming preserves remaining time',async()=>{
   let time=0,count=0;

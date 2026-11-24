@@ -1,15 +1,18 @@
-import { Clock3, Plus, FastForward, Play, Pause } from "lucide-react";
-import { store, state, moveClock, setAutoplay, allRows, notify, persist } from "../store";
+import { Clock3, Plus, FastForward, Play, Pause, RotateCcw } from "lucide-react";
+import { store, state, moveClock, resetClock, setAutoplay, allRows, notify, persist } from "../store";
 import { reminderAt, longReminderAt } from "../../lib/engine.js";
 import { fmt, day } from "../fmt";
 import { Button, GlassCard } from "./ui";
 
 export default function ClockBar() {
   const s = state(); const ini = store.initiative;
-  const times = allRows().flatMap(({ task }: any) => [task.status === "todo" && task.due && !task.reminded ? reminderAt(task) : null, longReminderAt(task, s.now)]).filter((x): x is number => typeof x === "number" && Number.isFinite(x));
+  const times = allRows().flatMap(({ task }: any) => [
+    task.status === "todo" && task.due && !task.reminded ? reminderAt(task) : null,
+    longReminderAt(task, s.now),
+  ]).filter((time): time is number => typeof time === "number" && Number.isFinite(time) && time > s.now);
   const next = () => {
     if (!times.length) return;
-    moveClock(Math.max(s.now, Math.min(...times))).then(() => persist());
+    moveClock(Math.min(...times)).then(() => persist());
   };
   return (
     <GlassCard tour="clock" hover={false} className="mb-6 flex flex-wrap items-center gap-3 p-4">
@@ -21,6 +24,7 @@ export default function ClockBar() {
         </div>
       </div>
       <div className="ml-auto flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="ghost" onClick={resetClock} disabled={store.demo.running} title="回到 2026 年 11 月 20 日 09:00，并停止自动播放"><RotateCcw className="h-3 w-3" />重置时钟</Button>
         <Button size="sm" variant="ghost" onClick={() => moveClock(s.now + 3600000).then(() => persist())}><Plus className="h-3 w-3" />1小时</Button>
         <Button size="sm" variant="ghost" onClick={() => moveClock(s.now + 24 * 3600000).then(() => persist())}><Plus className="h-3 w-3" />1天</Button>
         <Button size="sm" variant="soft" onClick={next} disabled={!times.length}><FastForward className="h-3 w-3" />下一次提醒</Button>
