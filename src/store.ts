@@ -39,7 +39,7 @@ export const store = {
   selected: null as string | null,
   ai: { configured: null as boolean | null, model: null as string | null, provider: null as string | null, limits: null as any, lastFallback: "", providers: [] as ProviderInfo[], choice: { provider: "", model: "" }, loadingModels: false },
   typing: null as null | { scene: string; author: string },
-  demo: { running: false, paused: false, step: 0, total: 0, caption: "", sub: "", target: "", focusLabel: "" },
+  demo: { running: false, paused: false, phase: "showing" as "entering" | "showing" | "leaving", step: 0, total: 0, caption: "", sub: "", target: "", focusLabel: "" },
 };
 
 // 设备是宿舍里的一套：所有群共享同一个设备对象（聊天指令/主动判断/手动控制都作用在这里）。

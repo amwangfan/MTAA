@@ -3,9 +3,10 @@ import type { View } from "../store";
 import { Reveal, CountUp } from "./ui";
 import { useEffect, useRef } from "react";
 import HomePreview from "./HomePreview";
+import { DEMO_DURATION_SECONDS } from "../../lib/demo-playback.js";
 
 const steps: { n: string; title: string; view: View; icon: any }[] = [
-  { n: "1", title: "32 秒看全程", view: "center", icon: PlayCircle },
+  { n: "1", title: `${DEMO_DURATION_SECONDS} 秒看全程`, view: "center", icon: PlayCircle },
   { n: "2", title: "发一条通知", view: "messages", icon: MessagesSquare },
   { n: "3", title: "确认待办", view: "center", icon: CheckCircle2 },
   { n: "4", title: "对比记忆", view: "memory", icon: Brain },
@@ -28,7 +29,7 @@ export default function Showcase({ stats, startDemo, goto, startGuide }: { stats
           <h2 id="hero-title" className="hero-title">群消息太多？<br /><span>Whale 帮你接住每一条</span>通知。</h2>
           <p className="hero-lead">课程群、社团群、项目群、实验室群、宿舍群……重要通知总是淹没在闲聊里。Whale 读懂消息，整理成<strong>有原文证据的待办建议</strong>，记住你的习惯，在合适的时候克制地提醒你，还能经你批准联动宿舍设备。</p>
           <div className="hero-actions mt-7 flex flex-wrap items-center gap-3">
-            <button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />一键自动演示 · 32 秒</button>
+            <button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />一键自动演示 · {DEMO_DURATION_SECONDS} 秒</button>
             <button className="btn-hero-ghost" onClick={() => goto("messages")}><MousePointerClick className="h-4 w-4" />自己动手试试</button>
             <button className="text-sm text-muted underline-offset-4 hover:underline" onClick={startGuide}>分步引导</button>
           </div>

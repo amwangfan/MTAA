@@ -325,15 +325,47 @@ body {
 
 /* 演示字幕条 */
 .demo-bar{position:fixed;left:50%;bottom:22px;transform:translateX(calc(-50% + 110px));z-index:900;width:min(620px,calc(100vw - 260px));padding:14px 16px 14px;border-radius:18px;background:#262624f2;color:#fff;box-shadow:0 24px 60px -20px #000a;backdrop-filter:blur(10px);animation:drop .35s both}
-.demo-progress{height:3px;border-radius:3px;background:#ffffff22;margin-bottom:11px;overflow:hidden}.demo-progress span{display:block;height:100%;background:linear-gradient(90deg,#e7a57e,#d97757);transition:width .5s}
+.demo-progress {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 5px;
+  height: 4px;
+  margin-bottom: 11px;
+}
+.demo-progress-segment{overflow:hidden;border-radius:999px;background:#ffffff26}
+.demo-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg,#e7a57e,#d97757);
+  transform-origin: left center;
+  animation: demo-progress-fill var(--demo-step-duration) linear both;
+  animation-play-state: var(--demo-play-state);
+}
+@keyframes demo-progress-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .demo-step{flex:none;font-family:var(--font-serif);font-size:13px;padding:3px 8px;border-radius:8px;background:#ffffff1f}.demo-caption{font-size:15.5px;font-weight:600;line-height:1.45}.demo-sub{margin-top:2px;font-size:12.5px;color:#d8d3ca}
 .demo-stop{flex:none;display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:9px;background:#ffffff1a;font-size:12px}.demo-stop:hover{background:#ffffff33}
-.demo-overlay{position:fixed;inset:0;z-index:1100;pointer-events:none}
+.demo-overlay{position:fixed;inset:0;z-index:1100;pointer-events:none;--demo-mask:#14263873}
 .demo-blocker{position:absolute;inset:0;pointer-events:auto}
-.demo-shading{position:absolute;inset:0;animation:demo-shading-fade ease-in-out both}
-@keyframes demo-shading-fade{from{opacity:1}to{opacity:0}}
-.demo-spotlight{position:fixed;border:2px solid #e7a57e;border-radius:12px;box-shadow:0 0 0 9999px #14263888;pointer-events:none}
-.demo-dim{position:absolute;inset:0;background:#14263888;pointer-events:none}
+.demo-shading{position:absolute;inset:0}
+.demo-curtain {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--demo-mask), var(--demo-mask)), var(--color-paper);
+}
+.demo-curtain,.demo-caption-motion {
+  animation-duration: var(--demo-transition-duration);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+  animation-play-state: var(--demo-play-state);
+}
+.demo-curtain.is-leaving,.demo-caption-motion.is-entering{animation-name:demo-fade-in}
+.demo-curtain.is-entering,.demo-caption-motion.is-leaving{animation-name:demo-fade-out}
+@keyframes demo-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes demo-fade-out{from{opacity:1}to{opacity:0}}
+.demo-spotlight{position:fixed;border:2px solid #e7a57e;border-radius:12px;box-shadow:0 0 0 9999px var(--demo-mask);pointer-events:none}
+.demo-dim{position:absolute;inset:0;background:var(--demo-mask);pointer-events:none}
 .demo-overlay .demo-bar{pointer-events:auto;z-index:1;animation:none}
 .demo-controls{display:flex;flex-direction:column;gap:8px;flex:none}
 .demo-controls .demo-stop{min-height:36px;justify-content:center;font-size:14px}

@@ -62,7 +62,7 @@ export default function ReminderCard({ gotoCenter, openSuggestion }: {
   const count = unread.length + pending.length;
   const demo = store.demo;
   const demoSuggestions = demo.running && (demo.step === 2 || demo.target.startsWith("[data-demo-add="));
-  const demoReminder = demo.running && demo.step === 6 ? latest : undefined;
+  const demoReminder = demo.running && demo.step === 6 && demo.phase !== "entering" ? latest : undefined;
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [previewExpandedId, setPreviewExpandedId] = useState<string | null>(null);
