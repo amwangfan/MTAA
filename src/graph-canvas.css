@@ -1,0 +1,61 @@
+/* 图谱画布（基于 graph-explorer.css 的 wge- 命名空间，覆盖为暖纸令牌） */
+.wge-stage {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 13px;
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(217, 119, 87, 0.05), transparent 65%),
+    var(--color-card, #ffffff);
+}
+.wge-canvas {
+  display: block;
+  width: 100%;
+  height: 380px;
+  min-height: 350px;
+  touch-action: none;
+  cursor: grab;
+}
+.wge-canvas:active { cursor: grabbing; }
+.wge-stage-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--color-line-soft, #efeee6);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--color-muted, #6e6b63);
+  font-size: 10px;
+  pointer-events: none;
+}
+.wge-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 260px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-line, #e8e6dc);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--color-ink, #262624);
+  box-shadow: 0 8px 26px rgba(38, 38, 36, 0.12);
+  pointer-events: none;
+}
+.wge-tooltip strong { font-size: 12px; }
+.wge-tooltip span { color: var(--color-muted, #6e6b63); font-size: 10.5px; }
+.wge-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted, #6e6b63);
+  font-size: 13px;
+  pointer-events: none;
+}
+@media (max-width: 620px) {
+  .wge-canvas { height: 320px; min-height: 300px; }
+}

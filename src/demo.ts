@@ -34,7 +34,7 @@ export async function runDemo(nav: Nav) {
     step(2,"通知已整理成待办建议","这里有任务、来源群和截止时间；现在还没有加入待办。",`[data-demo-suggestion="course:${sug.id}"]`,"新生成的待办建议");
     await wait();
 
-    step(3,"确认建议，建立自己的待办","重要通知先成为建议，由你决定是否加入日程。",`[data-demo-add="course:${sug.id}"]`,"即将模拟点击：添加待办");
+    step(3,"确认建议，建立自己的待办","重要通知先成为建议，由你决定是否加入日程。",`[data-demo-add="course:${sug.id}"]`,"即将点击：添加待办");
     await wait(DEMO_STEP_MS/2);
     const result:any=act.addSug("course",sug.id),taskId=result?.taskId;
     if(!taskId)throw new Error('missing task');
@@ -53,7 +53,7 @@ export async function runDemo(nav: Nav) {
     await wait();
 
     store.reminderOpen=true;
-    step(6,"截止提醒到了","模拟通知会说明提醒内容；可以确认收到，或关闭这类提醒。",'.push-wrap',"刚到达的截止提醒");
+    step(6,"截止提醒到了","通知会说明提醒内容；可以确认收到，或关闭这类提醒。",'.push-wrap',"刚到达的截止提醒");
     await wait(); store.reminderOpen=false;
 
     setTrack("life"); store.active="home";
@@ -63,10 +63,10 @@ export async function runDemo(nav: Nav) {
     await wait();
 
     nav.goto("devices");
-    step(8,"按学习习惯调整设备","批准本次调整后，设备状态与行动账本同步更新；这里展示模拟执行。",'[data-tour="approval"]',"单次批准区域");
+    step(8,"按学习习惯调整设备","批准本次调整后，设备状态与行动账本同步更新；这里展示执行过程。",'[data-tour="approval"]',"单次批准区域");
     await wait(DEMO_STEP_MS/2);
     for(const id of store.studyPlan?.actionIds||[])await act.devApprove(id);
-    step(8,"学习环境已按偏好调整（模拟）","灯已打开，空调已开启并设为 24℃；每项调整都能查看记忆来源和执行记录。",'[data-tour="device-ledger"]',"行动账本 · 模拟回执");
+    step(8,"学习环境已按偏好调整","灯已打开，空调已开启并设为 24℃；每项调整都能查看记忆来源和执行记录。",'[data-tour="device-ledger"]',"行动账本 · 回执");
     await wait(DEMO_STEP_MS/2);
     store.notice="演示完成。去「消息来源」发一条自己的通知，或重新演示并随时暂停。";
     nav.goto("center");

@@ -1,76 +1,105 @@
-import { useMemo, useRef, useState } from "react";
-import { Minus, Plus, Scan } from "lucide-react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { GraphEngine } from "../../lib/graph-engine.js";
+import { normalizeGraph, colorForType } from "../../lib/graph-adapter.js";
+import GraphWorker from "../../lib/graph-worker.js?worker&inline";
+import "../graph-canvas.css";
 
-type GraphNode = { id: string; kind: string; label: string; status?: string };
-type GraphLink = { id: string; from: string; to: string; label: string };
+type GraphNode = { id: string; kind: string; label: string; status?: string; messageId?: string };
+type GraphLink = { id: string; from: string; to: string; label: string; weight?: number };
+export type GroupMemoryGraphHandle = { zoomIn: () => void; zoomOut: () => void; resetView: () => void };
 type Props = {
   graph: { nodes: GraphNode[]; links: GraphLink[] };
   selected: string;
   onSelect: (id: string) => void;
+  onOpenEvidence?: (messageId: string) => void;
   query: string;
   kind: string;
-  mode: "2d" | "3d";
 };
 
-const palette: Record<string, string> = {
+// 暖纸节点色（与图例 .group-memory-dot 一致）
+const KIND_COLORS: Record<string, string> = {
   group: "#bc5a34", member: "#5d7351", segment: "#8a6a9a",
   keyword: "#c99a3a", memory: "#4c6a7a", evidence: "#a67c64",
 };
-const short = (s: string, n = 11) => s.length > n ? `${s.slice(0, n)}…` : s;
+const short = (s: string, n = 22) => s.length > n ? `${s.slice(0, n)}…` : s;
+const KIND_LABEL: Record<string, string> = { group: "群空间", member: "成员", segment: "对话段", keyword: "关键词", memory: "记忆", evidence: "原话证据" };
 
-export default function GroupMemoryGraph({ graph, selected, onSelect, query, kind, mode }: Props) {
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState({ x: -0.18, y: 0.25 });
-  const drag = useRef<{ x: number; y: number } | null>(null);
-  const visible = useMemo(() => {
+const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function GroupMemoryGraph({ graph, selected, onSelect, onOpenEvidence, query, kind }, ref) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const engineRef = useRef<any>(null);
+  const [tooltip, setTooltip] = useState<{ label: string; kind: string; x: number; y: number } | null>(null);
+  const [empty, setEmpty] = useState(false);
+
+  // groupMemoryGraph → explorer 数据模型 → normalizeGraph
+  const data = useMemo(() => normalizeGraph({
+    nodes: graph.nodes.map(n => ({
+      id: n.id, label: n.label, type: n.kind, status: n.status,
+      description: n.label,
+      importance: n.kind === "group" ? 0.9 : n.kind === "memory" ? 0.7 : 0.45,
+      raw: n,
+    })),
+    edges: graph.links.map(l => ({ id: l.id, source: l.from, target: l.to, relation: l.label, weight: l.weight ?? 0.6 })),
+  }), [graph]);
+
+  // 搜索/类型过滤：命中节点保留其一跳邻居，证据链可读
+  const filterIds = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
-    const matched = new Set(graph.nodes.filter(n => (!kind || n.kind === kind) && (!q || n.label.toLocaleLowerCase().includes(q))).map(n => n.id));
-    // A search result retains its immediate neighbours, making the evidence chain readable.
-    const ids = q ? new Set([...matched, ...graph.links.filter(l => matched.has(l.from) || matched.has(l.to)).flatMap(l => [l.from, l.to])]) : matched;
-    return { nodes: graph.nodes.filter(n => ids.has(n.id)), links: graph.links.filter(l => ids.has(l.from) && ids.has(l.to)) };
-  }, [graph, kind, query]);
-  const points = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const totals: Record<string, number> = {};
-    visible.nodes.forEach(n => { totals[n.kind] = (totals[n.kind] || 0) + 1; });
-    return visible.nodes.map(n => {
-      const i = counts[n.kind] || 0; counts[n.kind] = i + 1;
-      const t = (i + 0.5) / (totals[n.kind] || 1);
-      const rings: Record<string, number> = { group: 0, member: 115, segment: 195, keyword: 285, memory: 245, evidence: 350 };
-      const offsets: Record<string, number> = { group: 0, member: -1.5, segment: 0.4, keyword: -0.5, memory: 2.2, evidence: 1.6 };
-      const a = t * Math.PI * 2 + offsets[n.kind];
-      const radius = rings[n.kind] ?? 290;
-      let x = Math.cos(a) * radius, y = Math.sin(a) * radius * 0.62, z = Math.sin(a * 1.7) * 105;
-      let scale = 1;
-      if (mode === "3d") {
-        const cy = Math.cos(rotation.y), sy = Math.sin(rotation.y), cx = Math.cos(rotation.x), sx = Math.sin(rotation.x);
-        const nx = x * cy + z * sy, nz = z * cy - x * sy;
-        const ny = y * cx - nz * sx; z = y * sx + nz * cx; x = nx; y = ny;
-        scale = 550 / (550 - z);
-      }
-      return { ...n, x: 480 + x * scale, y: 225 + y * scale, z, scale };
+    if (!kind && !q) return null;
+    const matched = new Set(data.nodes.filter(n => (!kind || n.type === kind) && (!q || n.label.toLocaleLowerCase().includes(q))).map(n => n.id));
+    if (q) for (const e of data.edges) if (matched.has(e.source) || matched.has(e.target)) { matched.add(e.source); matched.add(e.target); }
+    return matched;
+  }, [data, kind, query]);
+
+  useImperativeHandle(ref, () => ({
+    zoomIn: () => engineRef.current?.zoomBy(1.2),
+    zoomOut: () => engineRef.current?.zoomBy(0.82),
+    resetView: () => engineRef.current?.fit(),
+  }));
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const engine = new GraphEngine(canvas, {
+      workerFactory: () => new GraphWorker(), // ?worker&inline：单文件构建内可用
+      colorOf: (n: any) => KIND_COLORS[n.type] || colorForType(n.type),
+      onHover: (node: any, x: number, y: number) => {
+        setTooltip(node ? { label: node.label, kind: KIND_LABEL[node.type] || node.type, x, y } : null);
+      },
+      onClick: (node: any) => {
+        if (!node) { onSelect(""); return; }
+        onSelect(node.id);
+        const raw = node.raw;
+        if (node.type === "evidence" && raw?.messageId && onOpenEvidence) onOpenEvidence(raw.messageId);
+      },
     });
-  }, [visible.nodes, mode, rotation]);
-  const byId = new Map(points.map(n => [n.id, n]));
-  const selectedNode = byId.get(selected);
-  return <div className={`group-graph group-graph-${mode}`}>
-    <div className="group-graph-controls" aria-label="图谱缩放">
-      <button aria-label="放大图谱" onClick={() => setZoom(z => Math.min(1.7, z + .2))}><Plus size={16}/></button>
-      <button aria-label="缩小图谱" onClick={() => setZoom(z => Math.max(.6, z - .2))}><Minus size={16}/></button>
-      <button aria-label="适应画面" onClick={() => { setZoom(1); setRotation({ x: -.18, y: .25 }); }}><Scan size={16}/></button>
-    </div>
-    <svg viewBox="0 0 960 450" role="img" aria-label={`${mode.toUpperCase()} 群聊记忆图谱，${points.length} 个节点`} onPointerDown={e => { if (mode === "3d") drag.current = { x: e.clientX, y: e.clientY }; }} onPointerMove={e => { if (!drag.current || mode !== "3d") return; const dx = e.clientX - drag.current.x, dy = e.clientY - drag.current.y; drag.current = { x: e.clientX, y: e.clientY }; setRotation(r => ({ x: Math.max(-1.2, Math.min(1.2, r.x + dy * .007)), y: r.y + dx * .007 })); }} onPointerUp={() => { drag.current = null; }} onPointerLeave={() => { drag.current = null; }}>
-      <g transform={`translate(480 225) scale(${zoom}) translate(-480 -225)`}>
-        {visible.links.map(l => { const a = byId.get(l.from), b = byId.get(l.to); return a && b ? <line key={l.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={selected && (l.from === selected || l.to === selected) ? "group-graph-link is-related" : "group-graph-link"} /> : null; })}
-        {[...points].sort((a,b) => a.z - b.z).map(n => <g key={n.id} transform={`translate(${n.x} ${n.y}) scale(${Math.max(.75,Math.min(1.25,n.scale))})`} className="group-graph-node" role="button" tabIndex={0} aria-label={`查看${n.label}`} onClick={() => onSelect(n.id)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(n.id); }}>
-          <circle r={n.kind === "group" ? 34 : n.kind === "member" ? 24 : 18} fill={palette[n.kind] || "#888"} stroke={selected === n.id ? "#262624" : "#fff"} strokeWidth={selected === n.id ? 4 : 2.5} />
-          <text y={n.kind === "group" ? 51 : 36} textAnchor="middle" className="group-graph-label">{short(n.label, n.kind === "memory" ? 14 : 10)}</text>
-          {n.status && n.status !== "active" && <circle cx="15" cy="-15" r="5" fill={n.status === "revoked" ? "#a87171" : "#c99a3a"} stroke="#fff" strokeWidth="2"/>}
-        </g>)}
-      </g>
-    </svg>
-    {mode === "3d" && <span className="group-graph-hint">拖动旋转 · 节点远近按透视显示</span>}
-    {!points.length && <p className="group-graph-empty">没有符合条件的节点</p>}
-    <div className="group-graph-footer"><span>{points.length} 个节点 · {visible.links.length} 条关系</span>{selectedNode && <span>已选：{short(selectedNode.label, 22)}</span>}</div>
+    engineRef.current = engine;
+    return () => { engine.destroy(); engineRef.current = null; };
+  }, []);
+
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const had = engine.nodes.length;
+    engine.setData(data.nodes, data.edges);
+    if (!had && data.nodes.length) requestAnimationFrame(() => engine.fit());
+  }, [data]);
+
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    engine.setFilter(filterIds ? (n: any) => filterIds.has(n.id) : null);
+    setEmpty(filterIds ? data.nodes.filter(n => filterIds.has(n.id)).length === 0 : false);
+  }, [filterIds, data]);
+
+  useEffect(() => { engineRef.current?.select(selected || null); }, [selected]);
+
+  return <div className="wge-stage">
+    <canvas ref={canvasRef} className="wge-canvas" role="img" aria-label={`群聊记忆图谱，${data.nodes.length} 个节点，可拖动节点、平移与缩放`} />
+    {tooltip && <div className="wge-tooltip" style={{ left: Math.min(tooltip.x + 14, 340), top: Math.max(8, tooltip.y - 14) }}>
+      <strong>{short(tooltip.label)}</strong><span>{tooltip.kind}</span>
+    </div>}
+    <span className="wge-stage-hint">拖动节点重排 · 空白平移 · 滚轮缩放</span>
+    {empty && <p className="wge-empty">没有符合条件的节点</p>}
   </div>;
-}
+});
+export default GroupMemoryGraph;

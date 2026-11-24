@@ -47,7 +47,7 @@ export default function SplitView({ target, onBack, now, gotoSource }: { target:
         <div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-3 ${isSug && sug.status === "pending" ? "border-whale-200 bg-whale-50" : "border-slate-200 bg-slate-50"}`}>
           {isSug && sug.status === "pending" ? (
             <>
-              <span className="text-sm font-medium text-slate-800">这个日程要添加还是删除？</span>
+              <span className="text-sm font-semibold text-slate-800">这个日程要添加还是删除？</span>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => { act.addSug(s.scenario, sug.id); onBack(); }}><Check className="h-3 w-3" />添加</Button>
                 <Button size="sm" variant="danger" onClick={() => { act.dismissSug(s.scenario, sug.id); onBack(); }}><Trash2 className="h-3 w-3" />删除</Button>

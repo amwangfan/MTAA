@@ -16,13 +16,13 @@ export default function Showcase({ stats, startDemo, goto, startGuide, hide }: {
       <button className="hero-close" onClick={hide} aria-label="收起首页介绍"><X className="h-4 w-4" /></button>
       <div className="hero-grid">
         <Reveal>
-          <div className="chip mb-5">2026 QODER 高校创造力大赛 · STUDYHACK / LIFEHACK</div>
+          <p className="hero-byline">2026 Qoder 高校创造力大赛 · StudyHack / LifeHack</p>
           <h2 id="hero-title" className="hero-title">群消息太多？<br /><span>Whale 帮你接住每一条</span>作业和通知。</h2>
           <p className="hero-lead">课程群、社团群、项目群、实验室群、宿舍群……重要通知总是淹没在闲聊里。Whale 读懂消息，整理成<strong>有原文证据的待办建议</strong>，记住你的习惯，在合适的时候克制地提醒你，还能经你批准联动宿舍设备。</p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />一键自动演示 · 32 秒</button>
+            <button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />一键自动演示（32 秒）</button>
             <button className="btn-hero-ghost" onClick={() => goto("messages")}><MousePointerClick className="h-4 w-4" />自己动手试试</button>
-            <button className="text-sm text-muted underline-offset-4 hover:underline" onClick={startGuide}>分步引导</button>
+            <button className="py-1.5 text-sm text-muted underline-offset-4 hover:underline" onClick={startGuide}>分步引导</button>
           </div>
           <div className="hero-stats">
             {([["关注群", stats.groups], ["待处理事项", stats.todo], ["记忆记录", stats.memory], ["主动提醒", stats.reminders]] as [string, number][]).map(([l, v]) => <div key={l}><b><CountUp value={v} /></b><span>{l}</span></div>)}
@@ -39,7 +39,7 @@ export default function Showcase({ stats, startDemo, goto, startGuide, hide }: {
               <div className="ph-whale"><span className="ph-whale-dot" />Whale 识别到 1 条待办</div>
               <div className="ph-card">
                 <div className="ph-card-top"><b>课程作业</b><span>待确认</span></div>
-                <div className="ph-card-meta">11月24日 18:00 · 明确时刻 · 课程作业群</div>
+                <div className="ph-card-meta">11月24日 18:00，明确时刻，课程作业群</div>
                 <div className="ph-card-quote"><Quote className="h-3 w-3" />课程作业11月24日18:00前上交</div>
                 <div className="ph-card-actions"><span className="is-add">添加</span><span>删除</span></div>
               </div>
@@ -51,9 +51,9 @@ export default function Showcase({ stats, startDemo, goto, startGuide, hide }: {
       <Reveal delay={200}>
         <div className="steps-head"><h3>评委 5 步体验</h3><span>每一步都能点</span></div>
         <ol className="steps">
-          {steps.map((s, i) => <li key={s.n}><button onClick={() => (i === 0 ? startDemo() : goto(s.view))}><span className="step-n">{s.n}</span><s.icon className="h-4 w-4 text-clay-deep" /><b>{s.title}</b><small>{s.desc}</small><ArrowRight className="step-arrow h-4 w-4" /></button></li>)}
+          {steps.map((s, i) => <li key={s.n}><button onClick={() => (i === 0 ? startDemo() : goto(s.view))}><span className="step-n">{s.n}</span><s.icon className="h-4 w-4 text-clay-deep" /><b>{s.title}</b><small>{s.desc}</small></button></li>)}
         </ol>
-        <div className="flow-strip">{["群消息", "AI 结构化提取 + 原文校验", "待办建议", "你来确认", "主动提醒 · 记忆 · 设备"].map((x, i, a) => <span key={x} className="flex items-center gap-2"><span className="chip">{x}</span>{i < a.length - 1 && <ArrowRight className="h-4 w-4 text-clay" />}</span>)}<span className="ml-auto hidden items-center gap-1 text-xs text-muted md:flex"><PlugZap className="h-3.5 w-3.5" />设备接口预留 HomeAssistant</span></div>
+        <div className="flow-strip">{["群消息", "AI 结构化提取 + 原文校验", "待办建议", "你来确认", "主动提醒、记忆、设备"].map((x, i, a) => <span key={x} className="flex items-center gap-2"><span className="chip">{x}</span>{i < a.length - 1 && <ArrowRight className="h-4 w-4 text-clay" />}</span>)}<span className="ml-auto hidden items-center gap-1 text-xs text-muted md:flex"><PlugZap className="h-3.5 w-3.5" />设备接口预留 HomeAssistant</span></div>
       </Reveal>
     </section>
   );

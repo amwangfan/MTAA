@@ -14,8 +14,8 @@ export type ProviderInfo = { provider: string; label: string; models: string[]; 
 export type View = "center" | "messages" | "memory" | "initiative" | "devices" | "about";
 export type Track = "study" | "life" | "all";
 export const TRACKS: Record<Track, { label: string; desc: string; groups: string[] }> = {
-  study: { label: "学习", desc: "课程 · 项目 · 实验室", groups: ["course", "project", "lab"] },
-  life: { label: "生活", desc: "社团 · 宿舍 · 设备", groups: ["club", "home"] },
+  study: { label: "学习", desc: "课程、项目、实验室", groups: ["course", "project", "lab"] },
+  life: { label: "生活", desc: "社团、宿舍、设备", groups: ["club", "home"] },
   all: { label: "全部", desc: "五个群一起整理", groups: ["course", "club", "project", "lab", "home"] },
 };
 
@@ -133,7 +133,7 @@ export function setTrack(t: Track) {
   store.focusMessageId = null; persist(); notify();
 }
 
-// 时钟 + 节拍（AI 已配置时走 /api/v1/initiative，失败回退模拟判断并标注）
+// 时钟 + 节拍（AI 已配置时走 /api/v1/initiative，失败回退规则判断并标注）
 let ticking = false; let playTimer: any = null;
 async function runTicks(from: number, to: number) {
   const ini = store.initiative; const iv = ini.interval * 60000; const steps = Math.floor((to - from) / iv); const ts = tickStates();
