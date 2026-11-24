@@ -11,7 +11,6 @@ const kinds = [{ id: "", label: "全部节点" }, { id: "member", label: "成员
 export default function GroupMemoryDemo() {
   const [data, setData] = useState<any>(freshGroupDemo);
   const [selected, setSelected] = useState("group");
-  const [mode, setMode] = useState<"2d" | "3d">("2d");
   const [kind, setKind] = useState("");
   const [query, setQuery] = useState("");
   const [indexMode, setIndexMode] = useState<"segments" | "members">("segments");
@@ -58,9 +57,9 @@ export default function GroupMemoryDemo() {
     </div>
     <div className="group-memory-main mt-5">
       <section className="group-memory-panel" aria-label="记忆图谱">
-        <div className="group-memory-panel-head"><div><h3 className="font-display text-lg font-semibold">记忆图谱</h3><p>点开节点，沿关系查看原话和状态</p></div><div className="group-memory-mode" aria-label="图谱维度"><button aria-pressed={mode === "2d"} onClick={() => setMode("2d")}>2D</button><button aria-pressed={mode === "3d"} onClick={() => setMode("3d")}>3D</button></div></div>
+        <div className="group-memory-panel-head"><div><h3 className="font-display text-lg font-semibold">记忆图谱</h3><p>点开节点，沿关系查看原话和状态</p></div></div>
         <div className="group-memory-toolbar"><label><Search size={15}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索人物、话题或记忆" aria-label="搜索图谱"/></label><select aria-label="节点类型" value={kind} onChange={e => setKind(e.target.value)}>{kinds.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select><div className="group-memory-zoom" aria-label="图谱缩放"><button aria-label="放大图谱" onClick={() => graphRef.current?.zoomIn()}><Plus size={16}/></button><button aria-label="缩小图谱" onClick={() => graphRef.current?.zoomOut()}><Minus size={16}/></button><button aria-label="恢复初始视图" onClick={() => graphRef.current?.resetView()}><Scan size={16}/></button></div></div>
-        <GroupMemoryGraph ref={graphRef} graph={graph} selected={selected} onSelect={setSelected} query={query} kind={kind} mode={mode}/>
+        <GroupMemoryGraph ref={graphRef} graph={graph} selected={selected} onSelect={setSelected} onOpenEvidence={id => setSelected(`source-${id}`)} query={query} kind={kind}/>
         <div className="group-memory-legend">{[["群空间","group"],["成员","member"],["对话段","segment"],["关键词","keyword"],["记忆","memory"],["原话证据","evidence"]].map(([label,k]) => <span key={k}><i className={`group-memory-dot ${k}`}/>{label}</span>)}</div>
       </section>
       <aside className="group-memory-panel group-memory-detail" aria-live="polite">
