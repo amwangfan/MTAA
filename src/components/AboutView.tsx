@@ -1,4 +1,4 @@
-import { PlayCircle, MessagesSquare, FileSearch, Brain, BellRing, PlugZap, ShieldCheck, Server, Monitor, Cpu, Lock, Sparkles } from "lucide-react";
+import { PlayCircle, MessagesSquare, FileSearch, Brain, BellRing, PlugZap, ShieldCheck, Server, Monitor, Cpu, Sparkles } from "lucide-react";
 import { store, currentModelLabel } from "../store";
 import { GlassCard, SectionHeading, Badge } from "./ui";
 
@@ -48,11 +48,10 @@ export default function AboutView({ startDemo }: { startDemo: () => void }) {
       <SectionHeading eyebrow="Architecture" title="技术架构" />
       <div className="arch">{arch.map((a, i) => <div key={a.title} className="arch-col"><GlassCard hover={false} className="h-full p-5"><div className="flex items-center gap-2 font-semibold"><a.icon className="h-5 w-5 text-clay-deep" />{a.title}</div><ul className="mt-3 space-y-1.5 text-sm text-muted">{a.items.map((x) => <li key={x}>· {x}</li>)}</ul></GlassCard>{i < arch.length - 1 && <span className="arch-arrow" aria-hidden>→</span>}</div>)}</div>
 
-      <SectionHeading eyebrow="Honesty" title="真实与模拟的边界" />
+      <SectionHeading eyebrow="Honesty" title="真实与规则的边界" />
       <GlassCard hover={false} className="p-5 text-sm leading-7 text-ink-2">
         <p><Sparkles className="mr-1 inline h-4 w-4 text-clay-deep" /><b>真实：</b>AI 模式下消息理解、记忆对话、主动判断都会请求真实大模型；结果经契约校验后才显示，并标注「AI提取」。</p>
         <p><Cpu className="mr-1 inline h-4 w-4 text-moss" /><b>规则：</b>预置数据和「规则演示」由本地规则引擎生成，界面明确标注「规则引擎 / 规则回退」，不冒充 AI。</p>
-        <p><Lock className="mr-1 inline h-4 w-4 text-muted" /><b>模拟：</b>群聊人物与消息均为虚构，未接入真实 QQ；设备为模拟受理，已预留 HomeAssistant 适配接口。数据只保存在你的浏览器。</p>
       </GlassCard>
     </div>
   );

@@ -21,7 +21,7 @@ function useStore() { const [, force] = useReducer((x: number) => x + 1, 0); use
 const HERO_KEY = "whale.hero.hidden.v1";
 const TITLES: Record<View, [string, string]> = {
   center: ["信息总结", "跨群待办、截止分类与待确认建议"],
-  messages: ["消息来源", "模拟群聊 · 发一条通知试试"],
+  messages: ["消息来源", "群聊 · 发一条通知试试"],
   memory: ["记忆", "可解释、可遗忘、会衰减的个人记忆"],
   initiative: ["主动判断", "什么时候该提醒你，什么时候该闭嘴"],
   devices: ["设备", "宿舍智能设备 · 风险分级与单次批准"],
@@ -94,7 +94,7 @@ export default function App() {
         <footer className="site-footer">
           <WhaleLogo className="mx-auto mb-2 h-5 w-5 text-clay-deep" />
           Whale · 消息有着落 —— 2026 Qoder 高校创造力大赛参赛作品<br />
-          群聊、人物与设备均为虚构模拟 · 数据只存在你的浏览器 · AI 由服务端代理调用，密钥不进前端
+          数据只存在你的浏览器 · AI 由服务端代理调用，密钥不进前端
           <a className="icp-line" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">蜀ICP备2026070385号</a>
         </footer>
       </div>

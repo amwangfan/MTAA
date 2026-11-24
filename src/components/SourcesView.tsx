@@ -4,7 +4,7 @@ import { store, state, sendMessage, notify, persist } from "../store";
 import { scenarios, memberDirectory, senderRole, day } from "../../lib/engine.js";
 import { fmt } from "../fmt";
 import { groups, persona, isNotice, readCount, attachmentFor, systemLines, quoteFor, weekday, type Attachment } from "../sim";
-import { GlassCard, Badge, Button, Avatar, EmptyState } from "./ui";
+import { GlassCard, Button, Avatar, EmptyState } from "./ui";
 
 const hm = (ms: number) => fmt(ms).slice(-5);
 function AttachmentView({ a }: { a: Attachment }) {
@@ -59,7 +59,6 @@ export default function SourcesView() {
         <header className="chat-head">
           <Avatar name={g.icon} color={g.color} size={40} square />
           <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><b className="truncate font-display text-base">{g.title}</b><span className="text-xs text-muted">({g.members})</span></div></div>
-          <Badge tone="slate" className="hidden sm:inline-flex">模拟群聊 · 未接真实 QQ</Badge>
         </header>
         <div ref={messagesRef} role="log" aria-label="群聊消息" className="chat-scroll scrollbar-thin">
           {s.messages.map((m: any, i: number) => {
@@ -95,11 +94,11 @@ export default function SourcesView() {
             {scene.samples.map((x: string, i: number) => <button type="button" key={i} onClick={() => setText(x)} className="sample-chip">{x}</button>)}
           </div>
           <div className="compose-box">
-            <textarea aria-label="输入模拟群消息" value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={1200} placeholder={`以「${persona(s.scenario, author).short}」身份发言…  Ctrl+Enter 发送`} onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") submit(e); }} />
+            <textarea aria-label="输入群消息" value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={1200} placeholder={`以「${persona(s.scenario, author).short}」身份发言…  Ctrl+Enter 发送`} onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") submit(e); }} />
             <div className="compose-tools">
               <span className="flex items-center gap-2 text-muted"><Smile className="h-4 w-4" /><AtSign className="h-4 w-4" /><ImageIcon className="h-4 w-4" /></span>
-              <select aria-label="模拟发送者" disabled={store.busy} value={author} onChange={(e) => { setAuthor(e.target.value); store.demoAuthor = e.target.value; }}>
-                {members.map((m: any) => <option key={m} value={m}>{persona(s.scenario, m).name} · {senderRole(s, m).replace(/（模拟身份）/, "")}</option>)}
+              <select aria-label="发送者" disabled={store.busy} value={author} onChange={(e) => { setAuthor(e.target.value); store.demoAuthor = e.target.value; }}>
+                {members.map((m: any) => <option key={m} value={m}>{persona(s.scenario, m).name} · {senderRole(s, m)}</option>)}
               </select>
               <Button type="submit" disabled={store.busy || !text.trim()}><Send className="h-4 w-4" />{store.busy ? "整理中…" : "发送"}</Button>
             </div>

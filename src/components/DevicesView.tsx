@@ -26,7 +26,7 @@ const stateText = (d: any) => d.type === "light" ? (d.state.on ? "已打开" : "
 
 export default function DevicesView() {
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const run = async (action: () => Promise<unknown>) => { if (busy) return; setBusy(true); setError(""); try { await action(); } catch { setError("模拟操作未完成，请检查设备状态后重试。"); } finally { setBusy(false); } };
+  const run = async (action: () => Promise<unknown>) => { if (busy) return; setBusy(true); setError(""); try { await action(); } catch { setError("操作未完成，请检查设备状态后重试。"); } finally { setBusy(false); } };
   const dev = state().devices || { registry: [], pending: [], ledger: [] };
   const pending = dev.pending.filter((p: any) => p.status === "needs_approval");
   const get = (id: string) => dev.registry.find((d: any) => d.id === id);
@@ -34,7 +34,7 @@ export default function DevicesView() {
   const room = ac?.state.on ? Math.round((ac.state.temp - 1.5) * 10) / 10 : 19.5;
   const scene = (name: string, target: [string, string, any][]) => run(async () => {
     for (const [id, cap, args] of target) { const d = get(id); if (!d?.online) continue; const same = cap === "on_off" ? d.state.on === args.on : cap === "open_close" ? d.state.open === args.open : cap === "play" ? d.state.playing === args.play : cap === "set_temperature" ? d.state.temp === args.temp : false; if (!same) await act.devManual(id, cap, args); }
-    store.notice = `已执行「${name}」场景（手动触发，模拟受理）。`; notify();
+    store.notice = `已执行「${name}」场景（手动触发）。`; notify();
   });
   return (
     <div>
@@ -66,7 +66,7 @@ export default function DevicesView() {
         ); })}
       </div>
 
-      <SectionHeading eyebrow="Approval" title="等你批准的操作" sub="记忆对话结合学习偏好与设备状态提出调整建议；逐项批准后模拟执行，结果写入行动账本。" />
+      <SectionHeading eyebrow="Approval" title="等你批准的操作" sub="记忆对话结合学习偏好与设备状态提出调整建议；逐项批准后执行，结果写入行动账本。" />
       <div data-tour="approval">
         {pending.length ? pending.map((p: any) => { const d = get(p.deviceId); return (
           <div key={p.id} className="approval-card animate-rise">
@@ -76,14 +76,14 @@ export default function DevicesView() {
           </div>); }) : <GlassCard hover={false} className="mb-6"><EmptyState icon={ShieldCheck} title="暂无待批准操作" sub="在「记忆」对话中说「我要开始学习了」，结合学习偏好和设备状态生成调整建议。" /></GlassCard>}
       </div>
 
-      <SectionHeading eyebrow="Ledger" title="行动账本" sub="意图 → 批准 → 执行 → 模拟受理回执，每一步都留痕。" />
+      <SectionHeading eyebrow="Ledger" title="行动账本" sub="意图 → 批准 → 执行 → 受理回执，每一步都留痕。" />
       <GlassCard tour="device-ledger" hover={false} className="p-5">
         {dev.ledger.length ? <ol className="timeline">{dev.ledger.slice().reverse().slice(0, 30).map((l: any, i: number) => (
           <li key={i} className={"stage-" + l.stage}>
             <span className="font-mono text-xs text-muted">{fmt(l.at)}</span>
             <Badge tone={l.stage === "denied" ? "rose" : l.stage === "executed" ? "green" : l.stage === "approved" ? "amber" : "slate"}>{stageName[l.stage] || l.stage}</Badge>
             <span className="text-ink-2">{get(l.deviceId)?.name || l.deviceId} · {capName[l.capability] || l.capability}</span>
-            <span className="text-xs text-muted">{sourceName[l.source] || l.source}{l.receipt ? " · 模拟受理（非真实设备）" : ""}</span>
+            <span className="text-xs text-muted">{sourceName[l.source] || l.source}</span>
           </li>))}</ol> : <EmptyState icon={ScrollText} title="还没有行动记录" sub="手动控制、场景或批准一次操作后，会在这里按时间留痕。" />}
       </GlassCard>
     </div>

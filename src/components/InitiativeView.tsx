@@ -46,7 +46,7 @@ export default function InitiativeView({ gotoCenter }: { gotoCenter: () => void 
           <details key={e.id} className="mb-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
             <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm">
               <span className="font-mono text-xs text-slate-500">{fmt(e.at)}</span>
-              <Badge tone={e.engine === "ai" ? "green" : "whale"}>{e.engine === "ai" ? "AI判断" : e.fallback ? "AI失败·模拟回退" : "模拟判断"}</Badge>
+              <Badge tone={e.engine === "ai" ? "green" : "whale"}>{e.engine === "ai" ? "AI判断" : e.fallback ? "AI失败·规则回退" : "规则判断"}</Badge>
               <Badge tone={gateTone[e.gate.status] || "slate"}>{e.gate.status}</Badge>
               <span className="text-slate-700">{e.decision.action}</span>
               <span className="text-xs text-slate-400">{e.promptSummary}</span>

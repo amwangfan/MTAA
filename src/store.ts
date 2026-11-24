@@ -133,7 +133,7 @@ export function setTrack(t: Track) {
   store.focusMessageId = null; persist(); notify();
 }
 
-// 时钟 + 节拍（AI 已配置时走 /api/v1/initiative，失败回退模拟判断并标注）
+// 时钟 + 节拍（AI 已配置时走 /api/v1/initiative，失败回退规则判断并标注）
 let ticking = false; let playTimer: any = null;
 async function runTicks(from: number, to: number) {
   const ini = store.initiative; const iv = ini.interval * 60000; const steps = Math.floor((to - from) / iv); const ts = tickStates();

@@ -37,7 +37,7 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
         {candidates.length ? candidates.map((r: any) => (
           <div key={r.id} className="mb-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
             <div className="font-medium text-slate-800">{r.summary}</div>
-            <div className="text-xs text-slate-500">{scName(r.groupId)} · {r.kind} · 命中「{r.pattern}」 · {r.origin === "ai" ? "AI提取" : "模拟提取"}</div>
+            <div className="text-xs text-slate-500">{scName(r.groupId)} · {r.kind} · 命中「{r.pattern}」 · {r.origin === "ai" ? "AI提取" : "规则提取"}</div>
             <div className="mt-1 rounded-xl border-l-2 border-teal-300 bg-teal-50/60 px-2 py-1 text-xs text-slate-600">「{r.evidence[0]?.quote}」</div>
             <div className="mt-2 flex gap-2">
               <Button size="sm" onClick={() => act.promote(r.groupId, r.id)}><Check className="h-3 w-3" />记住</Button>
