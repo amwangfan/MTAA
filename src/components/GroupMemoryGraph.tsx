@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Minus, Plus, Scan } from "lucide-react";
-import { createSimulation, ALPHA_MIN } from "../../lib/graph-layout.js";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { createSimulation, rotate3D, screenDeltaToWorld3D, shouldStartDrag, ALPHA_MIN } from "../../lib/graph-layout.js";
 
 type GraphNode = { id: string; kind: string; label: string; status?: string };
 type GraphLink = { id: string; from: string; to: string; label: string; weight?: number };
+export type GroupMemoryGraphHandle = { zoomIn: () => void; zoomOut: () => void; resetView: () => void };
 type Props = {
   graph: { nodes: GraphNode[]; links: GraphLink[] };
   selected: string;
@@ -19,14 +19,14 @@ const palettes: Record<string, string> = {
 };
 const short = (s: string, n = 11) => s.length > n ? `${s.slice(0, n)}…` : s;
 const VIEW_W = 960, VIEW_H = 450, CX = VIEW_W / 2, CY = VIEW_H / 2;
-const SPIN_FRICTION = 0.95;      // 旋转惯性阻尼
-const SPIN_MIN = 0.0002;         // 低于该角速度视为停止
+const SPIN_FRICTION = 0.95;
+const SPIN_MIN = 0.0002;
 const DEFAULT_ROT = { x: -0.18, y: 0.25 };
 
-export default function GroupMemoryGraph({ graph, selected, onSelect, query, kind, mode }: Props) {
+const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function GroupMemoryGraph({ graph, selected, onSelect, query, kind, mode }, ref) {
   const [zoom, setZoom] = useState(1);
   const [reduced, setReduced] = useState(false);
-  const rotation = useRef({ ...DEFAULT_ROT });   // 角度在 ref，避免每帧 React 重渲染
+  const rotation = useRef({ ...DEFAULT_ROT });
   const spin = useRef({ x: 0, y: 0 });
 
   const visible = useMemo(() => {
@@ -45,14 +45,25 @@ export default function GroupMemoryGraph({ graph, selected, onSelect, query, kin
   const nodeLayerRef = useRef<SVGGElement | null>(null);
   const lineEls = useRef(new Map<string, SVGLineElement>());
   const nodeEls = useRef(new Map<string, SVGGElement>());
-  const dragNode = useRef<{ id: string; startX: number; startY: number; lastX: number; lastY: number; moved: boolean } | null>(null);
-  const dragRotate = useRef<{ x: number; y: number; lastT: number } | null>(null);
+  // press 候选：按下只记录，不扰动布局；超过阈值才进入 dragging
+  const press = useRef<{ id: string; startX: number; startY: number } | null>(null);
+  const dragging = useRef<{ id: string; lastX: number; lastY: number; worldX: number; worldY: number; worldZ: number } | null>(null);
+  const dragRotate = useRef<{ x: number; y: number } | null>(null);
   const rafRef = useRef<number | null>(null);
   const runningRef = useRef(false);
   const simRef = useRef(sim); const modeRef = useRef(mode);
   const zoomRef = useRef(zoom); const reducedRef = useRef(reduced);
   const paintRef = useRef<() => void>(() => {});
   simRef.current = sim; modeRef.current = mode; zoomRef.current = zoom; reducedRef.current = reduced;
+
+  useImperativeHandle(ref, () => ({
+    zoomIn: () => setZoom(z => Math.min(1.7, z + .2)),
+    zoomOut: () => setZoom(z => Math.max(.6, z - .2)),
+    resetView: () => {
+      setZoom(1); rotation.current = { ...DEFAULT_ROT }; spin.current = { x: 0, y: 0 };
+      paintRef.current();
+    },
+  }));
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -68,16 +79,12 @@ export default function GroupMemoryGraph({ graph, selected, onSelect, query, kin
     const positions: any[] = current.positions();
     const in3d = modeRef.current === "3d";
     const { x: rx, y: ry } = rotation.current;
-    const cy = Math.cos(ry), sy = Math.sin(ry), cx = Math.cos(rx), sx = Math.sin(rx);
     type P = { id: string; x: number; y: number; scale: number; z: number };
     const projected: P[] = positions.map((p: any): P => {
       if (!in3d) return { id: p.id, x: p.x, y: p.y, scale: 1, z: 0 };
-      // 真 3D：旋转矩阵（Ry 后 Rx）+ 透视投影
-      const X = p.x - CX, Y = p.y - CY, Z = p.z;
-      const nx = X * cy + Z * sy, nzA = Z * cy - X * sy;
-      const ny = Y * cx - nzA * sx, nzB = Y * sx + nzA * cx;
-      const scale = Math.max(.55, Math.min(1.6, 550 / (550 - nzB)));
-      return { id: p.id, x: CX + nx * scale, y: CY + ny * scale, scale, z: nzB };
+      const r = rotate3D(p.x - CX, p.y - CY, p.z, rx, ry);
+      const scale = Math.max(.55, Math.min(1.6, 550 / (550 - r.nz)));
+      return { id: p.id, x: CX + r.nx * scale, y: CY + r.ny * scale, scale, z: r.nz };
     });
     const byId = new Map<string, P>(projected.map(p => [p.id, p]));
     for (const link of current.state.links) {
@@ -108,7 +115,6 @@ export default function GroupMemoryGraph({ graph, selected, onSelect, query, kin
     const frame = () => {
       const current = simRef.current;
       if (!current) { runningRef.current = false; rafRef.current = null; return; }
-      // 旋转惯性：松手后角速度按阻尼缓停
       if (spinning() && !dragRotate.current) {
         rotation.current = { x: Math.max(-1.2, Math.min(1.2, rotation.current.x + spin.current.x)), y: rotation.current.y + spin.current.y };
         spin.current = { x: spin.current.x * SPIN_FRICTION, y: spin.current.y * SPIN_FRICTION };
@@ -116,7 +122,7 @@ export default function GroupMemoryGraph({ graph, selected, onSelect, query, kin
       }
       const alpha = current.tick();
       paintRef.current();
-      if (alpha < ALPHA_MIN && !dragNode.current && !spinning()) { runningRef.current = false; rafRef.current = null; return; }
+      if (alpha < ALPHA_MIN && !dragging.current && !spinning()) { runningRef.current = false; rafRef.current = null; return; }
       rafRef.current = requestAnimationFrame(frame);
     };
     rafRef.current = requestAnimationFrame(frame);
@@ -126,7 +132,8 @@ export default function GroupMemoryGraph({ graph, selected, onSelect, query, kin
     stopLoop();
     spin.current = { x: 0, y: 0 };
     paintRef.current();
-    if (reducedRef.current) { for (let i = 0; i < 220; i++) sim.tick(); paintRef.current(); }
+    // 充分 settle：跑到真正平衡，避免残余张力在下次交互时爆发
+    if (reducedRef.current) { for (let i = 0; i < 400; i++) sim.tick(); paintRef.current(); }
     else startLoop();
     const onVisible = () => {
       if (document.hidden) stopLoop();
@@ -138,106 +145,100 @@ export default function GroupMemoryGraph({ graph, selected, onSelect, query, kin
 
   useEffect(() => { paintRef.current(); if (!reducedRef.current) startLoop(); }, [zoom]);
 
-  // 指针 → 视图坐标（含 zoom）
-  const toView = (clientX: number, clientY: number) => {
+  const toSim2d = (clientX: number, clientY: number) => {
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return { x: 0, y: 0 };
-    return {
-      x: (clientX - rect.left) / rect.width * VIEW_W,
-      y: (clientY - rect.top) / rect.height * VIEW_H,
-    };
+    const vx = (clientX - rect.left) / rect.width * VIEW_W;
+    const vy = (clientY - rect.top) / rect.height * VIEW_H;
+    const z = zoomRef.current;
+    return { x: (vx - CX) / z + CX, y: (vy - CY) / z + CY };
   };
-  const toSim2d = (clientX: number, clientY: number) => {
-    const v = toView(clientX, clientY); const z = zoomRef.current;
-    return { x: (v.x - CX) / z + CX, y: (v.y - CY) / z + CY };
-  };
-  // 3D 拖拽：视图位移经逆旋转映射回世界平面（在节点当前深度拖动）
-  const dragWorldDelta = (dxView: number, dyView: number, nodeZ: number) => {
-    const { x: rx, y: ry } = rotation.current;
-    // 正变换 R = Rx(rx)·Ry(ry)；逆变换 = Ry(-ry)·Rx(-rx)
-    let dx = dxView, dy = dyView, dz = 0;
-    let cx1 = Math.cos(-rx), sx1 = Math.sin(-rx);
-    let ny = dy * cx1 - dz * sx1; let nz = dy * sx1 + dz * cx1; dy = ny; dz = nz;
-    let cy1 = Math.cos(-ry), sy1 = Math.sin(-ry);
-    let nx = dx * cy1 + dz * sy1; nz = -dx * sy1 + dz * cy1; dx = nx; dz = nz;
-    void nodeZ;
-    return { dx: dx / zoomRef.current, dy: dy / zoomRef.current, dz };
+  const viewDelta = (dxClient: number, dyClient: number) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    const kx = rect ? VIEW_W / rect.width : 1, ky = rect ? VIEW_H / rect.height : 1;
+    return { dx: dxClient * kx, dy: dyClient * ky };
   };
 
+  // 按下：只记录候选与准备，不调 setDrag/reheat，不扰动布局
   const onNodeDown = (event: ReactPointerEvent<SVGGElement>, id: string) => {
     event.stopPropagation();
     event.preventDefault();
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* ignore */ }
     spin.current = { x: 0, y: 0 };
-    dragNode.current = { id, startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY, moved: false };
-    const current = simRef.current;
-    if (!current) return;
+    press.current = { id, startX: event.clientX, startY: event.clientY };
+  };
+
+  const beginDrag = (clientX: number, clientY: number) => {
+    const p = press.current; const current = simRef.current;
+    if (!p || !current) return;
+    const n = current.state.nodes.find((nd: any) => nd.id === p.id);
+    if (!n) { press.current = null; return; }
+    dragging.current = { id: p.id, lastX: clientX, lastY: clientY, worldX: n.x, worldY: n.y, worldZ: n.z };
     if (modeRef.current === "3d") {
-      const n = current.state.nodes.find((nd: any) => nd.id === id);
-      if (n) current.setDrag(id, n.x, n.y, n.z); // 先锁定当前位置，move 中按增量走
+      // 首个目标=当前位置（阈值内的位移忽略），之后按增量 1:1 跟随
+      current.setDrag(p.id, n.x, n.y, n.z);
     } else {
-      const p = toSim2d(event.clientX, event.clientY);
-      current.setDrag(id, p.x, p.y);
+      const pt = toSim2d(clientX, clientY);
+      current.setDrag(p.id, pt.x, pt.y);
+      dragging.current.worldX = pt.x; dragging.current.worldY = pt.y;
     }
     if (reducedRef.current) { for (let i = 0; i < 10; i++) current.tick(); paintRef.current(); }
     else startLoop();
   };
 
   const onPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
-    const dragging = dragNode.current;
-    if (dragging) {
-      const current = simRef.current;
-      if (!current) return;
-      if (Math.hypot(event.clientX - dragging.startX, event.clientY - dragging.startY) > 4) dragging.moved = true;
-      const rect = svgRef.current?.getBoundingClientRect();
-      const kx = rect ? VIEW_W / rect.width : 1, ky = rect ? VIEW_H / rect.height : 1;
+    const current = simRef.current;
+    // 候选 → 阈值内不进入拖动
+    if (press.current && !dragging.current) {
+      if (!shouldStartDrag(event.clientX - press.current.startX, event.clientY - press.current.startY)) return;
+      beginDrag(event.clientX, event.clientY);
+      return;
+    }
+    if (dragging.current && current) {
+      const d = viewDelta(event.clientX - dragging.current.lastX, event.clientY - dragging.current.lastY);
+      dragging.current.lastX = event.clientX; dragging.current.lastY = event.clientY;
       if (modeRef.current === "3d") {
-        const n = current.state.nodes.find((nd: any) => nd.id === dragging.id);
-        if (n) {
-          const d = dragWorldDelta((event.clientX - dragging.lastX) * kx, (event.clientY - dragging.lastY) * ky, n.z);
-          current.setDrag(dragging.id, n.x + d.dx, n.y + d.dy, n.z + d.dz);
-        }
+        // 1:1：视图位移 ÷ 节点透视 scale，再逆旋转映射到世界增量
+        const { x: rx, y: ry } = rotation.current;
+        const pz = rotate3D(dragging.current.worldX - CX, dragging.current.worldY - CY, dragging.current.worldZ, rx, ry).nz;
+        const w = screenDeltaToWorld3D(d.dx / zoomRef.current, d.dy / zoomRef.current, pz, rx, ry);
+        dragging.current.worldX += w.dx; dragging.current.worldY += w.dy; dragging.current.worldZ += w.dz;
+        current.setDrag(dragging.current.id, dragging.current.worldX, dragging.current.worldY, dragging.current.worldZ);
       } else {
-        const p = toSim2d(event.clientX, event.clientY);
-        current.setDrag(dragging.id, p.x, p.y);
+        dragging.current.worldX += d.dx / zoomRef.current; dragging.current.worldY += d.dy / zoomRef.current;
+        current.setDrag(dragging.current.id, dragging.current.worldX, dragging.current.worldY);
       }
-      dragging.lastX = event.clientX; dragging.lastY = event.clientY;
       if (reducedRef.current) { for (let i = 0; i < 8; i++) current.tick(); }
       paintRef.current();
       return;
     }
     if (mode !== "3d" || !dragRotate.current) return;
-    // trackball 旋转 + 记录角速度（供惯性）
     const dx = event.clientX - dragRotate.current.x, dy = event.clientY - dragRotate.current.y;
-    dragRotate.current = { x: event.clientX, y: event.clientY, lastT: performance.now() };
+    dragRotate.current = { x: event.clientX, y: event.clientY };
     rotation.current = { x: Math.max(-1.2, Math.min(1.2, rotation.current.x + dy * .007)), y: rotation.current.y + dx * .007 };
     spin.current = { x: dy * .007, y: dx * .007 };
     paintRef.current();
   };
 
   const onPointerUp = () => {
-    const dragging = dragNode.current;
-    if (dragging) {
-      dragNode.current = null;
-      simRef.current?.endDrag(dragging.id);
+    if (dragging.current) {
+      const id = dragging.current.id;
+      dragging.current = null; press.current = null;
+      simRef.current?.endDrag(id);
       if (reducedRef.current) { for (let i = 0; i < 60; i++) simRef.current?.tick(); paintRef.current(); }
       else startLoop();
-      if (!dragging.moved) onSelect(dragging.id);
+      return;
     }
-    if (dragRotate.current) { dragRotate.current = null; if (!reducedRef.current) startLoop(); } // 惯性由主循环接管
+    if (press.current) { onSelect(press.current.id); press.current = null; } // 纯按下抬起=选择
+    if (dragRotate.current) { dragRotate.current = null; if (!reducedRef.current) startLoop(); }
   };
 
   const selectedNode = visible.nodes.find(n => n.id === selected);
 
   return <div className={`group-graph group-graph-${mode}`}>
-    <div className="group-graph-controls" aria-label="图谱缩放">
-      <button aria-label="放大图谱" onClick={() => setZoom(z => Math.min(1.7, z + .2))}><Plus size={16} /></button>
-      <button aria-label="缩小图谱" onClick={() => setZoom(z => Math.max(.6, z - .2))}><Minus size={16} /></button>
-      <button aria-label="适应画面" onClick={() => { setZoom(1); rotation.current = { ...DEFAULT_ROT }; spin.current = { x: 0, y: 0 }; paintRef.current(); }}><Scan size={16} /></button>
-    </div>
     <svg ref={svgRef} viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} role="img"
       aria-label={`${mode.toUpperCase()} 群聊记忆图谱，${visible.nodes.length} 个节点，可拖动节点重排`}
-      onPointerDown={e => { if (mode === "3d" && !dragNode.current) dragRotate.current = { x: e.clientX, y: e.clientY, lastT: performance.now() }; }}
+      onPointerDown={e => { if (mode === "3d" && !press.current && !dragging.current) dragRotate.current = { x: e.clientX, y: e.clientY }; }}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerLeave={() => { dragRotate.current = null; }}>
@@ -265,11 +266,12 @@ export default function GroupMemoryGraph({ graph, selected, onSelect, query, kin
         </g>
       </g>
     </svg>
-    <span className="group-graph-hint">{mode === "3d" ? "拖动节点重排 · 空白处拖动旋转（带惯性）" : "拖动节点重排 · 按钮缩放"}</span>
+    <span className="group-graph-hint">{mode === "3d" ? "拖动节点重排 · 空白处拖动旋转（带惯性）" : "拖动节点重排 · 工具条缩放"}</span>
     {!visible.nodes.length && <p className="group-graph-empty">没有符合条件的节点</p>}
     <div className="group-graph-footer">
       <span>{visible.nodes.length} 个节点 · {visible.links.length} 条关系</span>
       {selectedNode && <span>已选：{short(selectedNode.label, 22)}</span>}
     </div>
   </div>;
-}
+});
+export default GroupMemoryGraph;

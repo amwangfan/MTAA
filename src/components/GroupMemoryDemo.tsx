@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
-import { GitBranch, RefreshCw, RotateCcw, Search } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { GitBranch, Minus, Plus, RefreshCw, RotateCcw, Scan, Search } from "lucide-react";
 import { currentGroupMemories, freshGroupDemo, groupMemberPortrait, groupMemoryGraph, groupSpace, refreshGroupDemo, stageGroupMessage } from "../../lib/group-memory-demo.js";
 import { Badge, Button, GlassCard } from "./ui";
-import GroupMemoryGraph from "./GroupMemoryGraph";
+import GroupMemoryGraph, { type GroupMemoryGraphHandle } from "./GroupMemoryGraph";
 
 const time = (ms: number) => new Date(ms).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const statuses: Record<string, string> = { active: "当前有效", superseded: "已被更正", revoked: "已撤销" };
@@ -16,6 +16,7 @@ export default function GroupMemoryDemo() {
   const [query, setQuery] = useState("");
   const [indexMode, setIndexMode] = useState<"segments" | "members">("segments");
   const [notice, setNotice] = useState("群消息已备好；手动整合后可查看记忆与证据关系");
+  const graphRef = useRef<GroupMemoryGraphHandle>(null);
   const graph = useMemo(() => groupMemoryGraph(data), [data]);
   const node: any = graph.nodes.find((n: any) => n.id === selected);
   const message = data.messages.find((m: any) => m.id === node?.messageId);
@@ -58,8 +59,8 @@ export default function GroupMemoryDemo() {
     <div className="group-memory-main mt-5">
       <section className="group-memory-panel" aria-label="记忆图谱">
         <div className="group-memory-panel-head"><div><h3 className="font-display text-lg font-semibold">记忆图谱</h3><p>点开节点，沿关系查看原话和状态</p></div><div className="group-memory-mode" aria-label="图谱维度"><button aria-pressed={mode === "2d"} onClick={() => setMode("2d")}>2D</button><button aria-pressed={mode === "3d"} onClick={() => setMode("3d")}>3D</button></div></div>
-        <div className="group-memory-toolbar"><label><Search size={15}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索人物、话题或记忆" aria-label="搜索图谱"/></label><select aria-label="节点类型" value={kind} onChange={e => setKind(e.target.value)}>{kinds.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select></div>
-        <GroupMemoryGraph graph={graph} selected={selected} onSelect={setSelected} query={query} kind={kind} mode={mode}/>
+        <div className="group-memory-toolbar"><label><Search size={15}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索人物、话题或记忆" aria-label="搜索图谱"/></label><select aria-label="节点类型" value={kind} onChange={e => setKind(e.target.value)}>{kinds.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select><div className="group-memory-zoom" aria-label="图谱缩放"><button aria-label="放大图谱" onClick={() => graphRef.current?.zoomIn()}><Plus size={16}/></button><button aria-label="缩小图谱" onClick={() => graphRef.current?.zoomOut()}><Minus size={16}/></button><button aria-label="恢复初始视图" onClick={() => graphRef.current?.resetView()}><Scan size={16}/></button></div></div>
+        <GroupMemoryGraph ref={graphRef} graph={graph} selected={selected} onSelect={setSelected} query={query} kind={kind} mode={mode}/>
         <div className="group-memory-legend">{[["群空间","group"],["成员","member"],["对话段","segment"],["关键词","keyword"],["记忆","memory"],["原话证据","evidence"]].map(([label,k]) => <span key={k}><i className={`group-memory-dot ${k}`}/>{label}</span>)}</div>
       </section>
       <aside className="group-memory-panel group-memory-detail" aria-live="polite">
