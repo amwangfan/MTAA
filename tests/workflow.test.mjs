@@ -1,11 +1,22 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {fresh,extractSuggestion,applySuggestion,BASE} from '../lib/engine.js';
-import {extractInto,promote,recall,forget} from '../lib/memory.js';
+import {extractInto,promote,recall,forget,correct} from '../lib/memory.js';
 import {initDevices,propose,approve,HomeAssistantAdapter} from '../lib/devices.js';
 import {initInitiative,buildContext,gate} from '../lib/initiative.js';
 test('new message is a suggestion until confirmed; adding twice is idempotent',()=>{const s=fresh('course'),n=s.tasks.length;extractSuggestion(s,'读书报告12月1日提交','我');const sug=s.suggestions.at(-1);assert(sug);assert.equal(s.tasks.length,n);applySuggestion(s,sug.id,'add');applySuggestion(s,sug.id,'add');assert.equal(s.tasks.length,n+1);});
 test('dismissed suggestion can be restored without creating a task',()=>{const s=fresh('course'),n=s.tasks.length;extractSuggestion(s,'读书报告12月1日提交','我');const sug=s.suggestions.at(-1);applySuggestion(s,sug.id,'dismiss');assert.equal(sug.status,'dismissed');applySuggestion(s,sug.id,'restore');assert.equal(sug.status,'pending');assert.equal(s.tasks.length,n);});
 test('memory needs consent, and forgotten memory stops being recalled',()=>{const s=fresh('course');extractInto(s,{id:'test-pref',author:'我',text:'我喜欢爵士音乐',time:BASE});const r=s.memory.find(r=>r.summary.includes('爵士'));assert(r);assert(!recall(s,'爵士',BASE).some(h=>h.record.id===r.id));promote(s,r.id,BASE);assert(recall(s,'爵士',BASE).some(h=>h.record.id===r.id));forget(s,r.id,BASE);assert(!recall(s,'爵士',BASE).some(h=>h.record.id===r.id));});
+test('explicit correction keeps old evidence but recalls only the new preference',()=>{
+  const s=fresh('project'), first={id:'old-message',author:'我',text:'我喜欢周五下午讨论项目',time:BASE};
+  const [old]=extractInto(s,first); assert(old); promote(s,old.id,BASE);
+  const next={id:'new-message',author:'我',text:'更正：我喜欢周三下午讨论项目',time:BASE+86400000};
+  const updated=correct(s,old.id,next); assert(updated);
+  assert.equal(old.state,'superseded'); assert.equal(updated.supersedes,old.id);
+  assert.equal(old.evidence[0].messageId,first.id);
+  assert.equal(recall(s,'讨论项目',next.time).some(h=>h.record.id===old.id),false);
+  assert.equal(recall(s,'讨论项目',next.time).some(h=>h.record.id===updated.id),true);
+  assert.equal(correct(s,old.id,next),null);
+});
 test('simulated control requires approval and cannot run twice',async()=>{const s=fresh('course'),dev=initDevices(s),r=propose(s,{deviceId:'living_light',capability:'on_off',args:{on:true}});assert.equal(r.status,'needs_approval');assert.equal(dev.registry[0].state.on,false);await approve(s,r.id);assert.equal(dev.registry[0].state.on,true);assert.equal(await approve(s,r.id),null);await assert.rejects(new HomeAssistantAdapter().discover(),/未实现/);});
 test('quiet hours block proactive notifications',()=>{const ini=initInitiative(),s=fresh('course'),now=Date.UTC(2026,10,20,16);const ctx=buildContext([s],now,ini);assert.equal(ctx.policy.quiet,true);assert.equal(gate({deviceProposal:null},ctx,ini).status,'deferred');});
