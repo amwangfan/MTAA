@@ -7,6 +7,7 @@ import { recall, daySummary, dayOf } from "../../lib/memory.js";
 import { day } from "../../lib/engine.js";
 import { scName } from "../fmt";
 import { GlassCard, Badge, Button, SectionHeading } from "./ui";
+import { usePagedSearch, ModuleSearch, Pager } from "./paged";
 
 export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: string, id: string) => void; now: number }) {
   const [query, setQuery] = useState("");
@@ -14,14 +15,19 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
   const all = states.flatMap((s: any) => s.memory || []);
   const curated = all.filter((r: any) => r.state === "curated" && r.space === "owner");
   const candidates = all.filter((r: any) => r.state === "candidate");
+  const aboutPs = usePagedSearch(curated, (r: any) => `${r.summary} ${r.kind} ${r.pattern || ""} ${(r.evidence || []).map((e: any) => e.quote).join(" ")}`);
+  const candPs = usePagedSearch(candidates, (r: any) => `${r.summary} ${scName(r.groupId)} ${r.kind} ${r.pattern || ""} ${(r.evidence || []).map((e: any) => e.quote).join(" ")}`);
   const hits = query ? states.flatMap((s: any) => recall(s, query, now, { limit: 6 })) : [];
   const days = [...new Set(states.flatMap((s: any) => s.messages.map((m: any) => dayOf(m.time))))].sort().reverse().slice(0, 4);
   const ev = (r: any) => r.evidence.map((e: any, i: number) => <Button key={i} size="sm" variant="ghost" onClick={() => gotoMessage(r.groupId, e.messageId)}><Quote className="h-3 w-3" />证据原文</Button>);
   return (
     <div><GroupMemoryDemo/><MemoryChat/><label className="mb-5 flex items-center gap-2 text-sm"><input type="checkbox" checked={store.memoryAIEnabled} onChange={e=>{store.memoryAIEnabled=e.target.checked;notify();}}/>发送群消息时额外提取AI记忆（增加模型调用，默认关闭）</label><div className="grid gap-6 lg:grid-cols-2">
       <GlassCard hover={false} className="p-5">
-        <h2 data-tour="memory" className="font-display mb-3 flex items-center gap-2 text-lg font-bold"><Brain className="h-5 w-5 text-whale-600" />关于我</h2>
-        {curated.length ? curated.map((r: any) => (
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 data-tour="memory" className="font-display flex items-center gap-2 text-lg font-bold"><Brain className="h-5 w-5 text-whale-600" />关于我</h2>
+          <ModuleSearch ps={aboutPs} placeholder="搜索记忆" />
+        </div>
+        {aboutPs.items.length ? aboutPs.items.map((r: any) => (
           <div key={r.id} className="mb-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
             <div className="flex items-start justify-between gap-2">
               <div><div className="font-medium text-slate-800">{r.summary}</div><div className="text-xs text-slate-500">{r.kind === "fact" ? "事实" : "偏好"} · 重要度 {r.importance} · {r.pattern}</div></div>
@@ -29,12 +35,16 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
             </div>
             <div className="mt-2 flex gap-2">{ev(r)}</div>
           </div>
-        )) : <p className="text-sm text-slate-500">还没有已晋升记忆。到「记忆候选」点击记住。</p>}
+        )) : <p className="text-sm text-slate-500">{aboutPs.searching ? "没有匹配的记忆。" : "还没有已晋升记忆。到「记忆候选」点击记住。"}</p>}
+        <Pager ps={aboutPs} />
       </GlassCard>
       <GlassCard hover={false} className="p-5">
-        <h2 className="font-display mb-3 flex items-center gap-2 text-lg font-bold"><Sparkles className="h-5 w-5 text-teal-600" />记忆候选</h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="font-display flex items-center gap-2 text-lg font-bold"><Sparkles className="h-5 w-5 text-teal-600" />记忆候选</h2>
+          <ModuleSearch ps={candPs} placeholder="搜索候选" />
+        </div>
         <p className="mb-3 text-xs text-slate-500">原始消息不是事实；需你确认才晋升。</p>
-        {candidates.length ? candidates.map((r: any) => (
+        {candPs.items.length ? candPs.items.map((r: any) => (
           <div key={r.id} className="mb-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
             <div className="font-medium text-slate-800">{r.summary}</div>
             <div className="text-xs text-slate-500">{scName(r.groupId)} · {r.kind} · 命中「{r.pattern}」 · {r.origin === "ai" ? "AI提取" : "规则提取"}</div>
@@ -44,7 +54,8 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
               <Button size="sm" variant="ghost" onClick={() => act.forget(r.groupId, r.id)}><Trash2 className="h-3 w-3" />忘记</Button>
             </div>
           </div>
-        )) : <p className="text-sm text-slate-500">暂无候选。</p>}
+        )) : <p className="text-sm text-slate-500">{candPs.searching ? "没有匹配的候选。" : "暂无候选。"}</p>}
+        <Pager ps={candPs} />
       </GlassCard>
       <GlassCard hover={false} className="p-5">
         <h2 className="font-display mb-3 flex items-center gap-2 text-lg font-bold"><CalendarDays className="h-5 w-5 text-violet-600" />你的一天</h2>
