@@ -145,18 +145,23 @@ const GroupMemoryGraph = forwardRef<GroupMemoryGraphHandle, Props>(function Grou
 
   useEffect(() => { paintRef.current(); if (!reducedRef.current) startLoop(); }, [zoom]);
 
-  const toSim2d = (clientX: number, clientY: number) => {
+  // viewBox 960×450 以 preserveAspectRatio=meet 居中缩放，可能留边（letterbox）；
+  // 指针换算必须用实际内容缩放与偏移，否则位移幅度出错。
+  const viewMetrics = () => {
     const rect = svgRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    const vx = (clientX - rect.left) / rect.width * VIEW_W;
-    const vy = (clientY - rect.top) / rect.height * VIEW_H;
+    if (!rect || !rect.width || !rect.height) return { scale: 1, ox: 0, oy: 0 };
+    const scale = Math.min(rect.width / VIEW_W, rect.height / VIEW_H);
+    return { scale, ox: rect.left + (rect.width - VIEW_W * scale) / 2, oy: rect.top + (rect.height - VIEW_H * scale) / 2 };
+  };
+  const toSim2d = (clientX: number, clientY: number) => {
+    const m = viewMetrics();
+    const vx = (clientX - m.ox) / m.scale, vy = (clientY - m.oy) / m.scale;
     const z = zoomRef.current;
     return { x: (vx - CX) / z + CX, y: (vy - CY) / z + CY };
   };
   const viewDelta = (dxClient: number, dyClient: number) => {
-    const rect = svgRef.current?.getBoundingClientRect();
-    const kx = rect ? VIEW_W / rect.width : 1, ky = rect ? VIEW_H / rect.height : 1;
-    return { dx: dxClient * kx, dy: dyClient * ky };
+    const m = viewMetrics();
+    return { dx: dxClient / m.scale, dy: dyClient / m.scale };
   };
 
   // 按下：只记录候选与准备，不调 setDrag/reheat，不扰动布局

@@ -192,3 +192,27 @@ test('rotate3D is consistent with screenDeltaToWorld3D projection depth', () => 
   const d = screenDeltaToWorld3D(4, 4, r.nz, 0.2, 0.6);
   assert.ok(Math.abs(Math.hypot(d.dx, d.dy, d.dz) - Math.hypot(4, 4) / (550 / (550 - r.nz))) < 1e-9);
 });
+
+// 组件管线往返自检：world →（旋转+透视）→ screen；screen 位移 →（除scale+逆旋转）→ world 增量
+// 加回 world 再投影，屏幕位移必须精确还原（1:1）。覆盖 DEFAULT_ROT 与多种深度/zoom。
+test('3D drag pipeline roundtrip: screenDelta → world → screen == screenDelta', () => {
+  const CX = 480, CY = 225;
+  const project = (wx, wy, wz, rx, ry) => {
+    const r = rotate3D(wx - CX, wy - CY, wz, rx, ry);
+    const s = 550 / (550 - r.nz);
+    return { sx: CX + r.nx * s, sy: CY + r.ny * s, nz: r.nz };
+  };
+  const rotations = [[-0.18, 0.25], [0.4, -0.6], [0, 0], [1.0, 0.9]]; // 含 DEFAULT_ROT 与较大角度
+  const nodes = [[500, 240, 0], [620, 180, -80], [400, 300, 90], [300, 150, 200]];
+  for (const [rx, ry] of rotations) for (const [wx, wy, wz] of nodes) for (const zoom of [1, 1.7, 0.6]) {
+    const p0 = project(wx, wy, wz, rx, ry);
+    const pointer = { dx: 60, dy: 40 }; // 用户看到的屏幕位移（viewBox 坐标）
+    // 组件接线：先除 zoom，pz 用投影深度
+    const w = screenDeltaToWorld3D(pointer.dx / zoom, pointer.dy / zoom, p0.nz, rx, ry);
+    const p1 = project(wx + w.dx, wy + w.dy, wz + w.dz, rx, ry);
+    // 投影后的内容位移 × zoom 应精确等于指针位移
+    const gotX = (p1.sx - p0.sx) * zoom, gotY = (p1.sy - p0.sy) * zoom;
+    assert.ok(Math.abs(gotX - pointer.dx) < 1e-6 && Math.abs(gotY - pointer.dy) < 1e-6,
+      `rx=${rx} ry=${ry} z=${wz} zoom=${zoom}: 期望(${pointer.dx},${pointer.dy}) 实际(${gotX.toFixed(3)},${gotY.toFixed(3)})`);
+  }
+});
