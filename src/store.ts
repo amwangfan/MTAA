@@ -12,7 +12,10 @@ export const KEY = "whale.visual-demo.v2";
 export const CHAT_KEY = "whale.memory-chat.v1";
 export const MODEL_KEY = "whale.ai-choice.v1";
 export type ProviderInfo = { provider: string; label: string; models: string[]; live: boolean; default: string | null; error?: string | null };
-export type View = "home" | "center" | "messages" | "memory" | "initiative" | "devices" | "about";
+// 主导航四视图 + 非导航内页 about；todos/assistant 为双标签容器视图。
+export type View = "home" | "messages" | "todos" | "assistant" | "about";
+export type TodosTab = "list" | "reminders";
+export type AssistantTab = "memory" | "environment";
 export type Track = "study" | "life" | "all";
 export const TRACKS: Record<Track, { label: string; desc: string; groups: string[] }> = {
   study: { label: "学习", desc: "课程、项目、实验室", groups: ["course", "project", "lab"] },
@@ -28,6 +31,7 @@ export const store = {
   states: {} as Record<string, any>,
   followed: new Set<string>(TRACKS.study.groups),
   track: "study" as Track,
+  tab: { todos: "list" as TodosTab, assistant: "memory" as AssistantTab },
   active: "course",
   extractMode: "ai" as "ai" | "rules",
   initiative: I.initInitiative() as any,
@@ -131,6 +135,13 @@ export function setTrack(t: Track) {
   store.track = t; store.followed = new Set(TRACKS[t].groups);
   if (!store.followed.has(store.active)) store.active = TRACKS[t].groups[0];
   store.focusMessageId = null; persist(); notify();
+}
+
+// 容器视图的标签页切换（待办：清单/提醒；助手：记忆/学习环境）
+export function setTab(scope: "todos" | "assistant", tab: string) {
+  if (scope === "todos" && ["list", "reminders"].includes(tab)) store.tab.todos = tab as TodosTab;
+  if (scope === "assistant" && ["memory", "environment"].includes(tab)) store.tab.assistant = tab as AssistantTab;
+  notify();
 }
 
 // 时钟 + 节拍（AI 已配置时走 /api/v1/initiative，失败回退规则判断并标注）

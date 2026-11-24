@@ -1,19 +1,20 @@
-import { PlayCircle, ArrowRight, MessagesSquare, CheckCircle2, BellRing, Brain, PlugZap, X, MousePointerClick, Quote } from "lucide-react";
+import { PlayCircle, ArrowRight, MessagesSquare, CheckCircle2, BellRing, Brain, PlugZap, MousePointerClick, Quote } from "lucide-react";
 import type { View } from "../store";
-import { Reveal, CountUp } from "./ui";
+import { Reveal, CountUp, GlassCard } from "./ui";
 import { useEffect, useRef } from "react";
 import HomePreview from "./HomePreview";
+import { aboutFeatures } from "./AboutView";
 import { DEMO_DURATION_SECONDS } from "../../lib/demo-playback.js";
 
-const steps: { n: string; title: string; view: View; icon: any }[] = [
-  { n: "1", title: `${DEMO_DURATION_SECONDS} 秒看全程`, view: "center", icon: PlayCircle },
+const steps: { n: string; title: string; view: View; tab?: string; icon: any }[] = [
+  { n: "1", title: `${DEMO_DURATION_SECONDS} 秒看全程`, view: "todos", icon: PlayCircle },
   { n: "2", title: "发一条通知", view: "messages", icon: MessagesSquare },
-  { n: "3", title: "确认待办", view: "center", icon: CheckCircle2 },
-  { n: "4", title: "对比记忆", view: "memory", icon: Brain },
-  { n: "5", title: "联动设备", view: "memory", icon: BellRing },
+  { n: "3", title: "确认待办", view: "todos", icon: CheckCircle2 },
+  { n: "4", title: "对比记忆", view: "assistant", tab: "memory", icon: Brain },
+  { n: "5", title: "联动设备", view: "assistant", tab: "environment", icon: BellRing },
 ];
 
-export default function Showcase({ stats, startDemo, goto, startGuide }: { stats: { groups: number; todo: number; memory: number; reminders: number }; startDemo: () => void; goto: (v: View) => void; startGuide: () => void }) {
+export default function Showcase({ stats, startDemo, goto, startGuide }: { stats: { groups: number; todo: number; memory: number; reminders: number }; startDemo: () => void; goto: (v: View, tab?: string) => void; startGuide: () => void }) {
   const history = useRef<HTMLDivElement>(null);
   const browsingHistory = useRef(false);
   useEffect(() => {
@@ -26,7 +27,7 @@ export default function Showcase({ stats, startDemo, goto, startGuide }: { stats
       <div className="hero-grid">
         <Reveal>
           <p className="hero-byline">2026 Qoder 高校创造力大赛 · StudyHack / LifeHack</p>
-          <h2 id="hero-title" className="hero-title">群消息太多？<br /><span>Whale 帮你接住每一条</span>作业和通知。</h2>
+          <h2 id="hero-title" className="hero-title">群消息太多？<br /><span>Whale 帮你接住每一条</span></h2>
           <p className="hero-lead">课程群、社团群、项目群、实验室群、宿舍群……重要通知总是淹没在闲聊里。Whale 读懂消息，整理成<strong>有原文证据的待办建议</strong>，记住你的习惯，在合适的时候克制地提醒你，还能经你批准联动宿舍设备。</p>
           <div className="hero-actions mt-7 flex flex-wrap items-center gap-3">
             <button className="btn-hero" onClick={startDemo}><PlayCircle className="h-5 w-5" />一键自动演示 · {DEMO_DURATION_SECONDS} 秒</button>
@@ -64,9 +65,15 @@ export default function Showcase({ stats, startDemo, goto, startGuide }: { stats
       <Reveal delay={200} className="hero-experience">
         <div className="steps-head"><h3>5 步体验</h3></div>
         <ol className="steps">
-          {steps.map((s, i) => <li key={s.n}><button onClick={() => (i === 0 ? startDemo() : goto(s.view))}><span className="step-n">{s.n}</span><s.icon className="h-4 w-4 text-clay-deep" /><b>{s.title}</b></button></li>)}
+          {steps.map((s, i) => <li key={s.n}><button onClick={() => (i === 0 ? startDemo() : goto(s.view, s.tab))}><span className="step-n">{s.n}</span><s.icon className="h-4 w-4 text-clay-deep" /><b>{s.title}</b></button></li>)}
         </ol>
         <div className="flow-strip">{["群消息", "AI 结构化提取 + 原文校验", "待办建议", "你来确认", "主动提醒、记忆、设备"].map((x, i, a) => <span key={x} className="flex items-center gap-2"><span className="chip">{x}</span>{i < a.length - 1 && <ArrowRight className="h-4 w-4 text-clay" />}</span>)}<span className="ml-auto hidden items-center gap-1 text-xs text-muted md:flex"><PlugZap className="h-3.5 w-3.5" />设备接口预留 HomeAssistant</span></div>
+      </Reveal>
+      <Reveal delay={260} className="hero-about">
+        <div className="steps-head"><h3>作品介绍</h3><p className="mt-2 max-w-2xl text-sm text-muted">Whale 是给被群消息淹没的大学生用的 AI 信息管家：把五个群的通知变成有证据的待办，记住你的习惯，在对的时间克制地提醒你，并在你批准后联动宿舍设备。</p></div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {aboutFeatures.map(([I, t, d]) => <GlassCard key={t} className="feature-card p-5" hover><span className="feature-icon"><I className="h-5 w-5" /></span><div className="mt-3 font-display font-semibold">{t}</div><p className="mt-1 text-sm text-muted">{d}</p></GlassCard>)}
+        </div>
       </Reveal>
     </section>
   );

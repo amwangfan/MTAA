@@ -753,3 +753,48 @@ body {
 .model-live{font-size:11px;border-radius: 6px;padding:1px 7px;border:1px solid var(--color-model-live)}
 .model-live.is-live{background: var(--color-emerald-50);color: var(--color-emerald-700);border-color:var(--color-emerald-200)}.model-live.is-off{background: var(--color-amber-50);color: var(--color-amber-700);border-color:var(--color-amber-200)}
 @media (prefers-reduced-motion: reduce){.model-row .animate-spin{animation:none}}
+
+/* ======================= 导航精简（v4）：标签页 / AI 设置弹层 / 顶部场景筛选 ======================= */
+/* 顶部场景筛选：紧凑分段控件（置于各内页标题行右侧） */
+.workspace-heading{flex-wrap:wrap}
+.track-switch.is-top{display:inline-grid;width:auto;margin:0;flex:none}
+.track-switch.is-top button{padding:6px 10px;min-height:32px}
+@media(max-width:639px){.track-switch.is-top{display:grid;width:100%;margin-top:10px}}
+
+/* 容器视图标签页（待办清单/提醒、记忆/学习环境） */
+.view-tabs{display:inline-flex;gap:4px;padding:4px;margin:0 0 18px;border:1px solid var(--color-line);border-radius:12px;background:var(--color-paper-2)}
+.view-tabs button{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9px;font-size:14px;color:var(--color-muted);transition:background .15s}
+.view-tabs button:hover{color:var(--color-ink-2)}
+.view-tabs button[aria-selected="true"]{background:var(--color-card);color:var(--color-ink);font-weight:600;box-shadow:0 1px 3px var(--color-push-shadow-2)}
+.tab-count{font-style:normal;background:var(--color-clay-deep);color:var(--color-card);border-radius:999px;font-size:11px;line-height:1.6;padding:0 6px;min-width:18px;text-align:center}
+@media(max-width:639px){.view-tabs{display:flex;width:100%}.view-tabs button{flex:1;justify-content:center;padding:8px 6px}}
+@media(prefers-reduced-motion:reduce){.view-tabs button{transition:none}}
+
+/* AI 设置弹层 */
+.ai-settings-layer{position:fixed;inset:0;z-index:900;display:grid;place-items:center;padding:16px}
+.ai-settings-backdrop{position:absolute;inset:0;background:var(--color-guide-dim-bg);cursor:default}
+.ai-settings-panel{position:relative;z-index:1;width:min(400px,100%);max-height:calc(100dvh - 48px);overflow:auto;background:var(--color-guide-panel-bg);border-radius:18px;padding:22px;box-shadow:0 18px 70px var(--color-guide-panel-shadow);display:flex;flex-direction:column;gap:10px;color:var(--color-guide-panel)}
+.ai-settings-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ai-settings-head h2{font-family:var(--font-serif);font-size:20px;font-weight:650;color:var(--color-ink)}
+.ai-settings-head button{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;color:var(--color-muted)}
+.ai-settings-head button:hover{background:var(--color-paper-2)}
+.ai-settings-panel>label{font-size:12px;color:var(--color-muted);margin-top:6px}
+.ai-settings-panel select{width:100%;border:1px solid var(--color-field-line);background:var(--color-card);border-radius:9px;padding:10px;font-size:14px;color:var(--color-ink-2);min-height:44px}
+.ai-settings-note{font-size:12.5px;line-height:1.7;color:var(--color-muted);background:var(--color-paper-2);border-radius:9px;padding:9px 11px;margin:0}
+.ai-settings-panel .model-picker{background:var(--color-card)}
+.ai-settings-panel .model-picker label{font-size:12px;color:var(--color-muted)}
+.ai-settings-panel .model-picker select{min-height:0}
+
+/* 侧栏底部小图标按钮（分步引导 / 重置演示数据） */
+.sidebar-mini{display:flex;gap:8px;padding:4px 8px 0;width:100%}
+.sidebar-mini button{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;color:var(--color-sidebar-tools-ink)}
+.sidebar-mini button:hover{background:var(--color-primary-sidebar)}
+.sidebar-mini button:disabled{opacity:.5;cursor:not-allowed}
+
+/* 页脚「关于作品」入口 */
+.footer-link{color:var(--color-clay-deep);text-decoration:underline;text-underline-offset:3px;font-size:12px}
+.footer-link:hover{color:var(--color-clay)}
+.footer-link[aria-current="page"]{font-weight:700;text-decoration:none}
+
+/* 首页作品介绍区块 */
+.hero-about{margin-top:34px}

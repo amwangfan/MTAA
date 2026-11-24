@@ -8,7 +8,7 @@ const pains = [
   ["通知会变", "截止日期延期、活动改时间、取消……旧信息还留在脑子里，最容易出错。"],
   ["提醒太吵或太晚", "日历要自己录；系统提醒不懂语境，深夜也响，或者在你最需要的时候沉默。"],
 ];
-const features: [any, string, string][] = [
+export const aboutFeatures: [any, string, string][] = [
   [MessagesSquare, "读懂群消息", "AI 理解作业、活动、延期、取消、完成；只整理群主/管理员发布的内容。"],
   [FileSearch, "每条都有证据", "待办建议附原文引用，程序逐字校验；分屏高亮 + 编号连线溯源。"],
   [ShieldCheck, "你来确认", "新消息先变成建议，添加 / 删除 / 恢复由你决定，不擅自改日程。"],
@@ -35,15 +35,15 @@ export default function AboutView({ startDemo }: { startDemo: () => void }) {
       <div className="grid gap-4 md:grid-cols-3">{pains.map(([t, d]) => <GlassCard key={t} hover={false} className="p-5"><div className="font-display text-lg font-semibold">{t}</div><p className="mt-2 text-sm text-muted">{d}</p></GlassCard>)}</div>
 
       <SectionHeading title="核心能力" />
-      <div className="grid gap-4 md:grid-cols-3">{features.map(([I, t, d]) => <GlassCard key={t} className="feature-card p-5" hover><span className="feature-icon"><I className="h-5 w-5" /></span><div className="mt-3 font-display font-semibold">{t}</div><p className="mt-1 text-sm text-muted">{d}</p></GlassCard>)}</div>
+      <div className="grid gap-4 md:grid-cols-3">{aboutFeatures.map(([I, t, d]) => <GlassCard key={t} className="feature-card p-5" hover><span className="feature-icon"><I className="h-5 w-5" /></span><div className="mt-3 font-display font-semibold">{t}</div><p className="mt-1 text-sm text-muted">{d}</p></GlassCard>)}</div>
 
       <SectionHeading title="怎么用（5 步）" />
       <GlassCard hover={false} className="p-5"><ol className="how-list">
         <li><b>看演示</b>：点侧栏「一键自动演示」，{DEMO_DURATION_SECONDS} 秒看完整流程。</li>
-        <li><b>发通知</b>：「消息来源」选一个群，以群主/管理员身份发一条，如「周五18:00前交实验报告」。</li>
-        <li><b>确认建议</b>：「信息总结」里点开建议，核对原文高亮后添加或删除。</li>
-        <li><b>问记忆</b>：「记忆」里用同一个问题对照三套记忆档案，点 M 编号查依据。</li>
-        <li><b>快进时间</b>：用演示时钟「下一次提醒」查看通知；在「记忆」说「我要开始学习了」，按偏好调整设备。</li>
+        <li><b>发通知</b>：「消息」选一个群，以群主/管理员身份发一条，如「周五18:00前交实验报告」。</li>
+        <li><b>确认建议</b>：「待办 · 待办清单」里点开建议，核对原文高亮后添加或删除。</li>
+        <li><b>问记忆</b>：「助手 · 记忆」里用同一个问题对照三套记忆档案，点 M 编号查依据。</li>
+        <li><b>快进时间</b>：用演示时钟「下一次提醒」查看通知；在「助手 · 记忆」说「我要开始学习了」，按偏好调整设备。</li>
       </ol></GlassCard>
 
       <SectionHeading title="技术架构" />
