@@ -89,12 +89,12 @@ export default function App() {
           {view === "devices" && <div className="pt-2"><DevicesView /></div>}
           {view === "about" && <div className="pt-2"><AboutView startDemo={startDemo} /></div>}
         </main>
-        <footer className="site-footer">
+        {view !== "home" && <footer className="site-footer">
           <WhaleLogo className="mx-auto mb-2 h-5 w-5 text-clay-deep" />
           Whale · 消息有着落 —— 2026 Qoder 高校创造力大赛参赛作品<br />
           数据只存在你的浏览器 · AI 由服务端代理调用，密钥不进前端
           <a className="icp-line" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">蜀ICP备2026070385号</a>
-        </footer>
+        </footer>}
       </div>
       {store.demo.running && <DemoOverlay />}
       {guideOpen && <UsageGuide onViewChange={goto} onClose={() => { try { localStorage.setItem(GUIDE_KEY, "seen"); } catch { /* ignore */ } setGuideOpen(false); goto(returnView.current); }} />}
