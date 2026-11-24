@@ -61,7 +61,6 @@ export default function Navbar({ view, setView, hero, setHero, startGuide, start
         <button data-tour="help" onClick={() => { setOpen(false); startGuide(); }}><CircleHelp size={17} />分步引导</button>
         <button aria-pressed={hero} onClick={() => { setHero(!hero); setOpen(false); }}><Sparkles size={17} />{hero ? "收起首页介绍" : "显示首页介绍"}</button>
         <button onClick={() => { if (window.confirm("重置全部演示数据？群聊、待办、记忆和设备会回到初始状态。")) resetAll(); }} disabled={store.busy || store.demo.running}><RotateCcw size={17} />重置演示数据</button>
-        <p className="sidebar-footnote">虚构群聊 · 模拟设备 · 数据仅存本浏览器</p>
       </div>
     </aside>
   </>;

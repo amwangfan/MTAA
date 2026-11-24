@@ -81,7 +81,6 @@ export default function App() {
         <main ref={main} id="main-content" className="mx-auto max-w-7xl px-4 pb-24">
           <div className="workspace-heading"><div><h1>{title}</h1><p>{sub}</p></div><span className="heading-chip">{store.track === "life" ? "LIFE" : store.track === "study" ? "STUDY" : "ALL"} · DEMO</span></div>
           {store.notice && <div role="status" className="notice-bar animate-rise"><Sparkles className="h-4 w-4 flex-none text-clay-deep" /><span className="flex-1">{store.notice}</span><button aria-label="关闭操作提示" onClick={() => { store.notice = ""; notify(); }}><X className="h-4 w-4" /></button></div>}
-          {store.extractMode === "ai" && store.ai.configured === false && <p role="status" className="fallback-bar">服务端未配置模型密钥：新消息会<strong>自动回退规则模式</strong>并在消息旁标注「规则回退」。部署时在环境变量中设置 AGENTSCOPE_API_KEY（或 DEEPSEEK_API_KEY）即可启用真实 AI。</p>}
           {store.extractMode === "ai" && store.ai.configured && store.ai.lastFallback && <p role="status" className="fallback-bar">上一次 AI 请求{store.ai.lastFallback}，已回退规则模式（结果已明确标注）。稍后发送会再次尝试真实模型。</p>}
           {view === "center" && hero && !split && <Showcase stats={stats} startDemo={startDemo} goto={goto} startGuide={startGuide} hide={() => setHeroOpen(false)} />}
           {!["messages", "about"].includes(view) && <div className="pt-2"><ClockBar /></div>}

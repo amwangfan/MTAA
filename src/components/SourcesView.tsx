@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Users, FileText, Image as ImageIcon, ListChecks, Link2, Megaphone, Sparkles, Cpu, PlugZap, ChevronDown, Smile, AtSign } from "lucide-react";
 import { store, state, sendMessage, notify, persist } from "../store";
-import { scenarios, memberDirectory, senderRole, publishers, day } from "../../lib/engine.js";
+import { scenarios, memberDirectory, senderRole, day } from "../../lib/engine.js";
 import { fmt } from "../fmt";
 import { groups, persona, isNotice, readCount, attachmentFor, systemLines, quoteFor, weekday, type Attachment } from "../sim";
 import { GlassCard, Badge, Button, Avatar, EmptyState } from "./ui";
@@ -58,7 +58,7 @@ export default function SourcesView() {
       {store.followed.size > 0 ? <GlassCard hover={false} className="chat-window">
         <header className="chat-head">
           <Avatar name={g.icon} color={g.color} size={40} square />
-          <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><b className="truncate font-display text-base">{g.title}</b><span className="text-xs text-muted">({g.members})</span></div><small className="text-xs text-muted">{scene.name} · 整理发布者：{publishers(s).map((n: string) => persona(s.scenario, n).short).join("、") || "未指定"}</small></div>
+          <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><b className="truncate font-display text-base">{g.title}</b><span className="text-xs text-muted">({g.members})</span></div></div>
           <Badge tone="slate" className="hidden sm:inline-flex">模拟群聊 · 未接真实 QQ</Badge>
         </header>
         <div ref={messagesRef} role="log" aria-label="群聊消息" className="chat-scroll scrollbar-thin">
@@ -104,7 +104,6 @@ export default function SourcesView() {
               <Button type="submit" disabled={store.busy || !text.trim()}><Send className="h-4 w-4" />{store.busy ? "整理中…" : "发送"}</Button>
             </div>
           </div>
-          <p className="mt-2 text-xs text-muted">{store.extractMode === "ai" ? (store.ai.configured ? "AI 模式：消息经服务端发送到真实模型，结果须通过原文逐字校验。" : "AI 未配置：消息会由规则引擎整理，并标注「规则回退」。") : "规则演示：离线规则引擎，不调用模型。"}只有群主/管理员的消息会被整理。</p>
         </form>
       </GlassCard> : <GlassCard className="p-8"><EmptyState icon={Users} title="还没有关注任何群" sub="在左侧「管理关注来源」里勾选需要整理的群，或在侧栏切换场景。" /></GlassCard>}
     </div>

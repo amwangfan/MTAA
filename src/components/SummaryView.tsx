@@ -33,7 +33,7 @@ export default function SummaryView({ openSplit, goto }: { openSplit: (t: any) =
             </button>
             <button data-demo-add={`${g.group}:${g.id}`} title="直接添加" aria-label={`添加待办：${g.title}`} onClick={() => act.addSug(g.group, g.id)} className="grid h-9 w-9 flex-none place-items-center rounded-full border border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white"><Plus className="h-5 w-5" /></button>
           </div>
-        )) : <EmptyState icon={Inbox} title="没有待确认的建议" sub="群里出现新的作业、活动或变更时，Whale 会先在这里给出建议，等你确认。" action={goto && <Button size="sm" variant="soft" onClick={() => goto("messages")}><MessagesSquare className="h-3.5 w-3.5" />去发一条通知</Button>} />}
+        )) : <EmptyState icon={Inbox} title="没有待确认的建议" action={goto && <Button size="sm" variant="soft" onClick={() => goto("messages")}><MessagesSquare className="h-3.5 w-3.5" />去发一条通知</Button>} />}
         {handled.length > 0 && (
           <details className="mt-3">
             <summary className="cursor-pointer text-sm text-slate-500">已处理建议 · {handled.length}</summary>
@@ -59,7 +59,7 @@ export default function SummaryView({ openSplit, goto }: { openSplit: (t: any) =
         </GlassCard>
       )}
 
-      <SectionHeading eyebrow="Deadline" title="跨群事务总览" sub="按演示时钟分类；不明确的日期不会推测成截止日。" />
+      <SectionHeading eyebrow="Deadline" title="跨群事务总览" />
       <div className="summary-tools mb-4 flex flex-wrap gap-3"><input aria-label="搜索事项" value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索任务、地点或群名" className="min-w-0 flex-1 rounded-xl border border-line bg-white px-3 py-2"/><select aria-label="按来源群筛选" value={group} onChange={e=>setGroup(e.target.value)} className="rounded-xl border border-line bg-white px-3 py-2"><option value="all">全部来源</option>{[...new Set(all.map((x:any)=>x.scene.id))].map(id=><option key={id} value={id}>{scName(id)}</option>)}</select><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showEmpty} onChange={e=>setShowEmpty(e.target.checked)}/>显示空分类</label></div>
       <p role="status" className="mb-4 text-sm text-muted">显示 {rows.length} / {all.length} 项{!rows.length ? " · 暂无匹配，可清空搜索或切换来源" : ""}</p>
       {groups.map(([key, label]) => {
