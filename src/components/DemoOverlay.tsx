@@ -27,7 +27,7 @@ export default function DemoOverlay() {
       const el=document.querySelector(demo.target);
       if(el){
         // Fixed notifications already have a screen position; do not scroll them.
-        if(!el.closest('.push-wrap')){
+        if(!el.closest('.notification-center')){
           const available=(panel.current?.getBoundingClientRect().top??innerHeight-170)-48;
           el.scrollIntoView({block:el.getBoundingClientRect().height>available?'start':'center',behavior:'instant'});
           const r=el.getBoundingClientRect(),limit=(panel.current?.getBoundingClientRect().top??innerHeight-170)-24;

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { View } from '../store';
 export const GUIDE_KEY='whale.visual-demo.guide.v2';
 const steps:{view:View;target:string;title:string;body:string}[]=[
- {view:'center',target:'[data-tour="suggestions"]',title:'重要消息，变成待办',body:'群通知会先生成建议。确认添加后，才会进入待办清单。'},
+ {view:'center',target:'[data-tour="notifications"]',title:'重要消息，变成待办',body:'点击右下角铃铛，查看群通知生成的建议。确认添加后，才会进入待办清单。'},
  {view:'messages',target:'[data-tour="sources"]',title:'选择消息来源',body:'选择关注的群，用模拟管理员“我”试发通知。未配置AI时，可切换规则演示。'},
  {view:'center',target:'.summary-tools',title:'查找与核对',body:'搜索任务或按群筛选。点击事项，查看原文、时间和变更记录。'},
  {view:'memory',target:'[data-tour="memory-dialogue"]',title:'记忆如何改变回答',body:'切换三套模拟记忆，对同一个问题比较回答。点击M编号，核对每句话引用了哪条记忆。'},

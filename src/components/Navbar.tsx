@@ -1,11 +1,11 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { LayoutDashboard, MessagesSquare, Brain, BellRing, PlugZap, Sparkles, Menu, X, CircleHelp, PlayCircle, RotateCcw, Info, GraduationCap, Coffee, Layers, RefreshCw } from "lucide-react";
+import { LayoutDashboard, MessagesSquare, Brain, BellRing, PlugZap, Home, Menu, X, CircleHelp, PlayCircle, RotateCcw, Info, GraduationCap, Coffee, Layers, RefreshCw } from "lucide-react";
 import { WhaleLogo } from "./ui";
 import { store, persist, notify, setTrack, resetAll, applyChoice, loadModels, currentModelLabel, TRACKS, type View, type Track } from "../store";
-const tabs: { id: View; label: string; icon: any }[] = [{ id: "center", label: "信息总结", icon: LayoutDashboard }, { id: "messages", label: "消息来源", icon: MessagesSquare }, { id: "memory", label: "记忆", icon: Brain }, { id: "initiative", label: "主动判断", icon: BellRing }, { id: "devices", label: "设备", icon: PlugZap }, { id: "about", label: "关于作品", icon: Info }];
+const tabs: { id: View; label: string; icon: any }[] = [{ id: "home", label: "首页", icon: Home }, { id: "center", label: "信息总结", icon: LayoutDashboard }, { id: "messages", label: "消息来源", icon: MessagesSquare }, { id: "memory", label: "记忆", icon: Brain }, { id: "initiative", label: "主动判断", icon: BellRing }, { id: "devices", label: "设备", icon: PlugZap }, { id: "about", label: "关于作品", icon: Info }];
 const trackIcon: Record<Track, any> = { study: GraduationCap, life: Coffee, all: Layers };
 
-export default function Navbar({ view, setView, hero, setHero, startGuide, startDemo }: { startGuide: () => void; startDemo: () => void; view: View; setView: (v: View) => void; hero: boolean; setHero: (b: boolean) => void }) {
+export default function Navbar({ view, setView, startGuide, startDemo }: { startGuide: () => void; startDemo: () => void; view: View; setView: (v: View) => void }) {
   const [open, setOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const [selection, setSelection] = useState<{ top: number; height: number } | null>(null);
@@ -28,8 +28,7 @@ export default function Navbar({ view, setView, hero, setHero, startGuide, start
   const ai = store.ai;
   const unread = store.initiative.inbox.filter((r: any) => !r.read).length;
   const pending = (store.states.home?.devices?.pending || []).filter((p: any) => p.status === "needs_approval").length;
-  const sugs = Object.values(store.states).filter((s: any) => store.followed.has(s.scenario)).reduce((a: number, s: any) => a + (s.suggestions || []).filter((g: any) => g.status === "pending").length, 0);
-  const counts: Partial<Record<View, number>> = { center: sugs, initiative: unread, devices: pending };
+  const counts: Partial<Record<View, number>> = { initiative: unread, devices: pending };
   const aiText = ai.configured === null ? "检查中…" : store.extractMode === "rules" ? "规则演示模式" : ai.configured ? `真实 AI · ${currentModelLabel() || "已配置"}` : "AI 未配置 · 规则回退";
   const aiTone = store.extractMode === "rules" ? "is-rules" : ai.configured ? "is-live" : "is-off";
   return <>
@@ -59,7 +58,6 @@ export default function Navbar({ view, setView, hero, setHero, startGuide, start
           <button type="button" aria-label="重新拉取模型列表" title="重新拉取模型列表" disabled={lock || ai.loadingModels} onClick={() => loadModels(true)}><RefreshCw size={14} className={ai.loadingModels ? "animate-spin" : ""} /></button></div>
         </div>; })()}
         <button data-tour="help" onClick={() => { setOpen(false); startGuide(); }}><CircleHelp size={17} />分步引导</button>
-        <button aria-pressed={hero} onClick={() => { setHero(!hero); setOpen(false); }}><Sparkles size={17} />{hero ? "收起首页介绍" : "显示首页介绍"}</button>
         <button onClick={() => { if (window.confirm("重置全部演示数据？群聊、待办、记忆和设备会回到初始状态。")) resetAll(); }} disabled={store.busy || store.demo.running}><RotateCcw size={17} />重置演示数据</button>
         <p className="sidebar-footnote">虚构群聊 · 模拟设备 · 数据仅存本浏览器</p>
       </div>

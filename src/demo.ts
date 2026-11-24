@@ -19,7 +19,7 @@ export async function runDemo(nav: Nav) {
   const wait=(ms=DEMO_STEP_MS)=>run.wait(ms);
   try {
     setAutoplay(false); resetData(); setTrack("study"); store.extractMode="rules";
-    store.initiative.enabled=true; store.reminderOpen=false; nav.closeSplit();
+    store.initiative.enabled=true; nav.closeSplit();
 
     store.active="course";
     await sendMessage("数电第三次实验报告明天18:00前提交到学习通，命名：学号-姓名-实验3","助教",{forceRules:true});
@@ -31,7 +31,7 @@ export async function runDemo(nav: Nav) {
     nav.goto("center");
     const sug=s.suggestions.filter((g:any)=>g.status==="pending").at(-1);
     if(!sug)throw new Error('missing suggestion');
-    step(2,"通知已整理成待办建议","这里有任务、来源群和截止时间；现在还没有加入待办。",`[data-demo-suggestion="course:${sug.id}"]`,"新生成的待办建议");
+    step(2,"通知已整理成待办建议","铃铛里可以查看任务、来源群和截止时间，等你确认。",`[data-demo-suggestion="course:${sug.id}"]`,"新生成的待办建议");
     await wait();
 
     step(3,"确认建议，建立自己的待办","重要通知先成为建议，由你决定是否加入日程。",`[data-demo-add="course:${sug.id}"]`,"即将模拟点击：添加待办");
@@ -48,13 +48,12 @@ export async function runDemo(nav: Nav) {
     nav.goto("initiative");
     const t=s.tasks.find((x:any)=>x.id===taskId);
     if(t)await moveClock(E.reminderAt(t));
-    store.reminderOpen=false; persist();
+    persist();
     step(5,"时钟快进到截止前 1 小时","演示快进时间，检查是否需要提醒，不用真的等到明天。",'[data-tour="clock"]',"已快进的演示时钟");
     await wait();
 
-    store.reminderOpen=true;
-    step(6,"截止提醒到了","模拟通知会说明提醒内容；可以确认收到，或关闭这类提醒。",'.push-wrap',"刚到达的截止提醒");
-    await wait(); store.reminderOpen=false;
+    step(6,"截止提醒到了","提醒弹出 3 秒后收回铃铛，点击铃铛仍可查看。",'.push-wrap',"刚到达的截止提醒");
+    await wait();
 
     setTrack("life"); store.active="home";
     requestStudyEnvironment("我要开始学习了","exam");

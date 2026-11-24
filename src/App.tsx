@@ -18,8 +18,8 @@ import { WhaleLogo } from "./components/ui";
 import { Sparkles, X } from "lucide-react";
 
 function useStore() { const [, force] = useReducer((x: number) => x + 1, 0); useEffect(() => subscribe(force), []); return store; }
-const HERO_KEY = "whale.hero.hidden.v1";
 const TITLES: Record<View, [string, string]> = {
+  home: ["首页", "作品介绍"],
   center: ["信息总结", "跨群待办、截止分类与待确认建议"],
   messages: ["消息来源", "模拟群聊 · 发一条通知试试"],
   memory: ["记忆", "可解释、可遗忘、会衰减的个人记忆"],
@@ -31,12 +31,11 @@ const TITLES: Record<View, [string, string]> = {
 export default function App() {
   useStore();
   const [guideOpen, setGuideOpen] = useState(false);
-  const returnView = useRef<View>("center");
-  const [view, setView] = useState<View>("center");
+  const returnView = useRef<View>("home");
+  const [view, setView] = useState<View>("home");
   const main = useRef<HTMLElement>(null);
   const sidebarDestination = useRef<View | null>(null);
   const [split, setSplit] = useState<any>(null);
-  const [hero, setHero] = useState(() => { try { return !localStorage.getItem(HERO_KEY); } catch { return true; } });
   useEffect(() => { void checkAI(); }, []);
   useLayoutEffect(() => {
     const fromSidebar = sidebarDestination.current === view;
@@ -65,8 +64,7 @@ export default function App() {
   };
   const gotoMessage = (scene: string, id: string) => { store.focusMessageId = id; store.active = scene; persist(); setSplit(null); setView("messages"); };
   const openSplit = (t: any) => { store.active = t.scene; setSplit(t); setView("center"); };
-  const setHeroOpen = (b: boolean) => { setHero(b); try { b ? localStorage.removeItem(HERO_KEY) : localStorage.setItem(HERO_KEY, "1"); } catch { /* ignore */ } };
-  const startDemo = () => { setGuideOpen(false); setHeroOpen(false); void runDemo({ goto: (v) => { setView(v); setSplit(null); }, openSplit, closeSplit: () => setSplit(null) }); };
+  const startDemo = () => { setGuideOpen(false); void runDemo({ goto: (v) => { setView(v); setSplit(null); }, openSplit, closeSplit: () => setSplit(null) }); };
   const startGuide = () => { returnView.current = view; setSplit(null); setGuideOpen(true); };
   const [title, sub] = TITLES[view];
 
@@ -76,32 +74,32 @@ export default function App() {
       <div className="bg-canvas" />
       <div className="dot-grid" />
       <div className="grain" />
-      <div className="relative z-10 application-content">
-        <Navbar startGuide={startGuide} startDemo={startDemo} view={view} setView={gotoFromSidebar} hero={hero} setHero={(b) => { setHeroOpen(b); goto("center"); }} />
-        <main ref={main} id="main-content" className="mx-auto max-w-7xl px-4 pb-24">
-          <div className="workspace-heading"><div><h1>{title}</h1><p>{sub}</p></div><span className="heading-chip">{store.track === "life" ? "LIFE" : store.track === "study" ? "STUDY" : "ALL"} · DEMO</span></div>
-          {store.notice && <div role="status" className="notice-bar animate-rise"><Sparkles className="h-4 w-4 flex-none text-clay-deep" /><span className="flex-1">{store.notice}</span><button aria-label="关闭操作提示" onClick={() => { store.notice = ""; notify(); }}><X className="h-4 w-4" /></button></div>}
-          {store.extractMode === "ai" && store.ai.configured === false && <p role="status" className="fallback-bar">服务端未配置模型密钥：新消息会<strong>自动回退规则模式</strong>并在消息旁标注「规则回退」。部署时在环境变量中设置 AGENTSCOPE_API_KEY（或 DEEPSEEK_API_KEY）即可启用真实 AI。</p>}
-          {store.extractMode === "ai" && store.ai.configured && store.ai.lastFallback && <p role="status" className="fallback-bar">上一次 AI 请求{store.ai.lastFallback}，已回退规则模式（结果已明确标注）。稍后发送会再次尝试真实模型。</p>}
-          {view === "center" && hero && !split && <Showcase stats={stats} startDemo={startDemo} goto={goto} startGuide={startGuide} hide={() => setHeroOpen(false)} />}
-          {!["messages", "about"].includes(view) && <div className="pt-2"><ClockBar /></div>}
-          {view === "center" && (split ? <SplitView target={split} onBack={() => setSplit(null)} now={now} gotoSource={() => { const source = store.states[split.scene]; const obj = split.type === "suggestion" ? source.suggestions.find((x: any) => x.id === split.id) : source.tasks.find((x: any) => x.id === split.id); gotoMessage(split.scene, obj?.messageId || obj?.sources?.at(-1) || ""); }} /> : <SummaryView openSplit={openSplit} goto={goto} />)}
+      <div className={`relative z-10 application-content${view === "home" ? " home-layout" : ""}`}>
+        <Navbar startGuide={startGuide} startDemo={startDemo} view={view} setView={gotoFromSidebar} />
+        <main ref={main} id="main-content" className={`mx-auto max-w-7xl px-4 pb-24${view === "home" ? " home-main" : ""}`}>
+          {view !== "home" && <div className="workspace-heading"><div><h1>{title}</h1><p>{sub}</p></div><span className="heading-chip">{store.track === "life" ? "LIFE" : store.track === "study" ? "STUDY" : "ALL"} · DEMO</span></div>}
+          {view !== "home" && store.notice && <div role="status" className="notice-bar animate-rise"><Sparkles className="h-4 w-4 flex-none text-clay-deep" /><span className="flex-1">{store.notice}</span><button aria-label="关闭操作提示" onClick={() => { store.notice = ""; notify(); }}><X className="h-4 w-4" /></button></div>}
+          {view !== "home" && store.extractMode === "ai" && store.ai.configured === false && <p role="status" className="fallback-bar">服务端未配置模型密钥：新消息会<strong>自动回退规则模式</strong>并在消息旁标注「规则回退」。部署时在环境变量中设置 AGENTSCOPE_API_KEY（或 DEEPSEEK_API_KEY）即可启用真实 AI。</p>}
+          {view !== "home" && store.extractMode === "ai" && store.ai.configured && store.ai.lastFallback && <p role="status" className="fallback-bar">上一次 AI 请求{store.ai.lastFallback}，已回退规则模式（结果已明确标注）。稍后发送会再次尝试真实模型。</p>}
+          {view === "home" && <Showcase stats={stats} startDemo={startDemo} goto={goto} startGuide={startGuide} />}
+          {!["home", "messages", "about"].includes(view) && <div className="pt-2"><ClockBar /></div>}
+          {view === "center" && (split ? <SplitView target={split} onBack={() => setSplit(null)} now={now} gotoSource={() => { const source = store.states[split.scene]; const obj = split.type === "suggestion" ? source.suggestions.find((x: any) => x.id === split.id) : source.tasks.find((x: any) => x.id === split.id); gotoMessage(split.scene, obj?.messageId || obj?.sources?.at(-1) || ""); }} /> : <SummaryView openSplit={openSplit} />)}
           {view === "messages" && <div className="pt-2"><SourcesView /></div>}
           {view === "memory" && <div className="pt-2"><MemoryView gotoMessage={gotoMessage} now={now} /></div>}
           {view === "initiative" && <div className="pt-2"><InitiativeView gotoCenter={() => goto("center")} /></div>}
           {view === "devices" && <div className="pt-2"><DevicesView /></div>}
           {view === "about" && <div className="pt-2"><AboutView startDemo={startDemo} /></div>}
         </main>
-        <footer className="site-footer">
+        {view !== "home" && <footer className="site-footer">
           <WhaleLogo className="mx-auto mb-2 h-5 w-5 text-clay-deep" />
           Whale · 消息有着落 —— 2026 Qoder 高校创造力大赛参赛作品<br />
           群聊、人物与设备均为虚构模拟 · 数据只存在你的浏览器 · AI 由服务端代理调用，密钥不进前端
           <a className="icp-line" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">蜀ICP备2026070385号</a>
-        </footer>
+        </footer>}
       </div>
       {store.demo.running && <DemoOverlay />}
       {guideOpen && <UsageGuide onViewChange={goto} onClose={() => { try { localStorage.setItem(GUIDE_KEY, "seen"); } catch { /* ignore */ } setGuideOpen(false); goto(returnView.current); }} />}
-      <ReminderCard gotoCenter={() => goto("center")} />
+      <ReminderCard gotoCenter={() => goto("center")} openSuggestion={target => { openSplit(target); window.scrollTo({ top: 0, behavior: "instant" }); }} />
     </div>
   );
 }
