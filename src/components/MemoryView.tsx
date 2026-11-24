@@ -30,7 +30,7 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
         {aboutPs.items.length ? aboutPs.items.map((r: any) => (
           <div key={r.id} className="mb-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
             <div className="flex items-start justify-between gap-2">
-              <div><div className="font-medium text-slate-800">{r.summary}</div><div className="text-xs text-slate-500">{r.kind === "fact" ? "事实" : "偏好"} · 重要度 {r.importance} · {r.pattern}</div></div>
+              <div><div className="font-semibold text-slate-800">{r.summary}</div><div className="text-xs text-slate-500">{r.kind === "fact" ? "事实" : "偏好"}，重要度 {r.importance}，{r.pattern}</div></div>
               <Button size="sm" variant="ghost" onClick={() => act.forget(r.groupId, r.id)}><Trash2 className="h-3 w-3" />忘记</Button>
             </div>
             <div className="mt-2 flex gap-2">{ev(r)}</div>
@@ -46,8 +46,8 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
         <p className="mb-3 text-xs text-slate-500">原始消息不是事实；需你确认才晋升。</p>
         {candPs.items.length ? candPs.items.map((r: any) => (
           <div key={r.id} className="mb-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
-            <div className="font-medium text-slate-800">{r.summary}</div>
-            <div className="text-xs text-slate-500">{scName(r.groupId)} · {r.kind} · 命中「{r.pattern}」 · {r.origin === "ai" ? "AI提取" : "规则提取"}</div>
+            <div className="font-semibold text-slate-800">{r.summary}</div>
+            <div className="text-xs text-slate-500">{scName(r.groupId)}，{r.kind}，命中「{r.pattern}」，{r.origin === "ai" ? "AI提取" : "规则提取"}</div>
             <div className="mt-1 rounded-xl border-l-2 border-teal-300 bg-teal-50/60 px-2 py-1 text-xs text-slate-600">「{r.evidence[0]?.quote}」</div>
             <div className="mt-2 flex gap-2">
               <Button size="sm" onClick={() => act.promote(r.groupId, r.id)}><Check className="h-3 w-3" />记住</Button>
@@ -62,7 +62,7 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
         {days.map((d: string) => { const sum = daySummary(states, d, now); return (
           <div key={d} className="mb-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
             <div className="text-xs text-slate-500">{d === day(now) ? "今天" : d}</div>
-            <div className="font-medium text-slate-800">{sum.title}</div>
+            <div className="font-semibold text-slate-800">{sum.title}</div>
             <div className="text-xs text-slate-500">{sum.summary}</div>
           </div>
         ); })}
@@ -75,7 +75,7 @@ export default function MemoryView({ gotoMessage, now }: { gotoMessage: (scene: 
         </div>
         {query ? (hits.length ? hits.map((h: any, i: number) => (
           <div key={i} className="relative mb-2 rounded-2xl border border-slate-200 bg-white/80 p-3">
-            <div className="font-medium text-slate-800">{h.record.summary}</div>
+            <div className="font-semibold text-slate-800">{h.record.summary}</div>
             <Badge tone="whale" className="absolute right-3 top-3">{h.score.toFixed(2)}</Badge>
             <ul className="mt-1 list-disc pl-4 text-xs text-slate-500">{h.reasons.map((x: string, j: number) => <li key={j}>{x}</li>)}</ul>
             <div className="mt-2 flex gap-2">{ev(h.record)}</div>

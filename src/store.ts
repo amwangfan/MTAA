@@ -14,8 +14,8 @@ export type ProviderInfo = { provider: string; label: string; models: string[]; 
 export type View = "center" | "messages" | "memory" | "initiative" | "devices" | "about";
 export type Track = "study" | "life" | "all";
 export const TRACKS: Record<Track, { label: string; desc: string; groups: string[] }> = {
-  study: { label: "学习", desc: "课程 · 项目 · 实验室", groups: ["course", "project", "lab"] },
-  life: { label: "生活", desc: "社团 · 宿舍 · 设备", groups: ["club", "home"] },
+  study: { label: "学习", desc: "课程、项目、实验室", groups: ["course", "project", "lab"] },
+  life: { label: "生活", desc: "社团、宿舍、设备", groups: ["club", "home"] },
   all: { label: "全部", desc: "五个群一起整理", groups: ["course", "club", "project", "lab", "home"] },
 };
 

@@ -14,9 +14,9 @@ export default function ClockBar() {
   return (
     <GlassCard tour="clock" hover={false} className="mb-6 flex flex-wrap items-center gap-3 p-4">
       <div className="flex items-center gap-2">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-whale-600 text-white"><Clock3 className="h-5 w-5" /></span>
+        <span className="text-whale-800"><Clock3 className="h-6 w-6" /></span>
         <div>
-          <div className="text-[10px] uppercase tracking-widest text-slate-500">演示时钟</div>
+          <div className="text-xs text-muted">演示时钟</div>
           <div className="font-mono text-sm font-semibold text-slate-800">{day(s.now).slice(0, 4)} / {fmt(s.now)}</div>
         </div>
       </div>
@@ -27,7 +27,7 @@ export default function ClockBar() {
         <Button size="sm" variant={ini.autoplay ? "danger" : "primary"} onClick={() => setAutoplay(!ini.autoplay)}>
           {ini.autoplay ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}{ini.autoplay ? "停止" : "自动播放"}
         </Button>
-        <select value={String(ini.speed || 1)} onChange={(e) => { ini.speed = Number(e.target.value); persist(); notify(); }} className="rounded-xl border border-slate-200 bg-white/80 px-2 py-1.5 text-xs">
+        <select value={String(ini.speed || 1)} onChange={(e) => { ini.speed = Number(e.target.value); persist(); notify(); }} className="rounded-xl border border-field-line bg-white/80 px-2 py-1.5 text-xs">
           <option value="1">1分/秒</option><option value="5">5分/秒</option><option value="15">15分/秒</option><option value="60">1时/秒</option>
         </select>
       </div>

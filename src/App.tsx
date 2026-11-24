@@ -25,7 +25,7 @@ const TITLES: Record<View, [string, string]> = {
   memory: ["记忆", "可解释、可遗忘、会衰减的个人记忆"],
   initiative: ["主动判断", "什么时候该提醒你，什么时候该闭嘴"],
   devices: ["设备", "宿舍智能设备 · 风险分级与单次批准"],
-  about: ["关于作品", "作品是什么 · 为什么做 · 怎么用 · 技术架构"],
+  about: ["关于作品", "作品是什么、为什么做、怎么用、技术架构"],
 };
 
 export default function App() {
@@ -79,7 +79,7 @@ export default function App() {
       <div className="relative z-10 application-content">
         <Navbar startGuide={startGuide} startDemo={startDemo} view={view} setView={gotoFromSidebar} hero={hero} setHero={(b) => { setHeroOpen(b); goto("center"); }} />
         <main ref={main} id="main-content" className="mx-auto max-w-7xl px-4 pb-24">
-          <div className="workspace-heading"><div><h1>{title}</h1><p>{sub}</p></div><span className="heading-chip">{store.track === "life" ? "LIFE" : store.track === "study" ? "STUDY" : "ALL"} · DEMO</span></div>
+          <div className="workspace-heading"><div><h1>{title}</h1><p>{sub}</p></div><span className="heading-chip">{store.track === "life" ? "生活" : store.track === "study" ? "学习" : "全部"} · 演示</span></div>
           {store.notice && <div role="status" className="notice-bar animate-rise"><Sparkles className="h-4 w-4 flex-none text-clay-deep" /><span className="flex-1">{store.notice}</span><button aria-label="关闭操作提示" onClick={() => { store.notice = ""; notify(); }}><X className="h-4 w-4" /></button></div>}
           {store.extractMode === "ai" && store.ai.configured && store.ai.lastFallback && <p role="status" className="fallback-bar">上一次 AI 请求{store.ai.lastFallback}，已回退规则模式（结果已明确标注）。稍后发送会再次尝试真实模型。</p>}
           {view === "center" && hero && !split && <Showcase stats={stats} startDemo={startDemo} goto={goto} startGuide={startGuide} hide={() => setHeroOpen(false)} />}

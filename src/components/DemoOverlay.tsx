@@ -63,7 +63,7 @@ export default function DemoOverlay() {
       {box ? <div className="demo-spotlight" style={box} /> : <div className="demo-dim" />}
     </div>
     <div ref={panel} className="demo-bar" role="region" aria-label="自动演示控制">
-      <div className="demo-progress" aria-hidden="true"><span style={{width:`${demo.step/demo.total*100}%`}}/></div>
+      <div className="demo-progress" aria-hidden="true"><span style={{ ["--p" as any]: demo.step / demo.total }}/></div>
       <div className="flex items-start gap-3">
         <span className="demo-step">{demo.step}/{demo.total}</span>
         <div className="min-w-0 flex-1" aria-live="polite" aria-atomic="true"><div className="demo-caption">{demo.caption}</div><div className="demo-sub">{demo.sub}</div></div>

@@ -66,17 +66,17 @@ export default function DevicesView() {
         ); })}
       </div>
 
-      <SectionHeading eyebrow="Approval" title="等你批准的操作" sub="记忆对话结合学习偏好与设备状态提出调整建议；逐项批准后执行，结果写入行动账本。" />
+      <SectionHeading title="等你批准的操作" sub="记忆对话结合学习偏好与设备状态提出调整建议；逐项批准后执行，结果写入行动账本。" />
       <div data-tour="approval">
         {pending.length ? pending.map((p: any) => { const d = get(p.deviceId); return (
           <div key={p.id} className="approval-card animate-rise">
             <ShieldCheck className="h-6 w-6 flex-none text-rose-600" />
-            <div className="min-w-0 flex-1"><div className="font-medium text-ink">{d?.name} · {capName[p.capability] || p.capability} {argsText(p.capability, p.args)}</div><div className="text-xs text-muted">{p.reason} · 来源：{sourceName[p.source] || p.source} · {fmt(p.at)}</div></div>
+            <div className="min-w-0 flex-1"><div className="font-semibold text-ink">{d?.name} · {capName[p.capability] || p.capability} {argsText(p.capability, p.args)}</div><div className="text-xs text-muted">{p.reason}；来源：{sourceName[p.source] || p.source}；{fmt(p.at)}</div></div>
             <div className="flex gap-2"><Button size="sm" disabled={busy} onClick={() => run(() => act.devApprove(p.id))}><Check className="h-3 w-3" />批准一次</Button><Button size="sm" variant="ghost" disabled={busy} onClick={() => act.devReject(p.id)}><X className="h-3 w-3" />拒绝</Button></div>
           </div>); }) : <GlassCard hover={false} className="mb-6"><EmptyState icon={ShieldCheck} title="暂无待批准操作" sub="在「记忆」对话中说「我要开始学习了」，结合学习偏好和设备状态生成调整建议。" /></GlassCard>}
       </div>
 
-      <SectionHeading eyebrow="Ledger" title="行动账本" sub="意图 → 批准 → 执行 → 受理回执，每一步都留痕。" />
+      <SectionHeading title="行动账本" sub="意图 → 批准 → 执行 → 受理回执，每一步都留痕。" />
       <GlassCard tour="device-ledger" hover={false} className="p-5">
         {dev.ledger.length ? <ol className="timeline">{dev.ledger.slice().reverse().slice(0, 30).map((l: any, i: number) => (
           <li key={i} className={"stage-" + l.stage}>

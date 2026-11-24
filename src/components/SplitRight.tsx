@@ -57,7 +57,7 @@ export default function SplitRight({ s, obj, t, isSug, sug, evidenceIds, relMem,
       {!isSug && t && E.isLongTask(t) && (
         <div className="space-y-2 rounded-2xl border border-violet-200 bg-violet-50/50 p-3">
           <div className="text-sm font-semibold text-violet-800">长期任务安排</div>
-          <div className="text-xs text-slate-600">周期 {E.day(t.windowStart)} 至 {E.day(t.due)} · {E.longState(t, now)} · {t.progress === undefined ? "进度未填写" : `进度 ${t.progress}%`}</div>
+          <div className="text-xs text-slate-600">周期 {E.day(t.windowStart)} 至 {E.day(t.due)}，{E.longState(t, now)}，{t.progress === undefined ? "进度未填写" : `进度 ${t.progress}%`}</div>
           {!terminal && <div className="flex items-center gap-2"><input type="number" min={0} max={100} value={prog} onChange={(e) => setProg(e.target.value)} placeholder="0–100" className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-xs" /><Button size="sm" variant="soft" onClick={saveProg}>保存进度</Button><Button size="sm" variant="ghost" onClick={() => { t.started = true; t.lastProgressAt = now; persist(); notify(); }}>标记进行中</Button></div>}
           {(stages || []).map((x: any, i: number) => (
             <div key={i} className="flex items-center justify-between text-xs text-slate-700"><span>{x.title} <span className="text-slate-400">{E.day(x.due)}</span></span>{t.stages && !terminal && <Button size="sm" variant="ghost" onClick={() => { x.done = !x.done; t.longRevision = (t.longRevision || 0) + 1; persist(); notify(); }}>{x.done ? "撤销" : "完成"}</Button>}</div>
