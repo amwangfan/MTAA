@@ -8,7 +8,7 @@ export default function StudyEnvironment({onMemory}:{onMemory:(profile:string,id
   const plan=store.studyPlan,[busy,setBusy]=useState(false),[error,setError]=useState('');
   if(!plan)return null;
   const dev=state().devices;
-  const operate=async(id:string)=>{if(busy)return;setBusy(true);setError('');try{await act.devApprove(id);}catch{setError('调整未完成，请在设备页核对状态。');}finally{setBusy(false);}};
+  const operate=async(id:string)=>{if(busy)return;setBusy(true);setError('');try{await act.devApprove(id);}catch{setError('调整未完成，请在助手·学习环境核对状态。');}finally{setBusy(false);}};
   return <section data-demo="study-environment" className="study-environment" aria-label="记忆对话学习环境联动">
     <div className="study-user"><b>我</b><p>{plan.question}</p></div>
     <div className="study-reply"><div className="mb-2 flex flex-wrap items-center gap-2"><b>Whale</b><Badge tone="amber">规则联动</Badge></div>
