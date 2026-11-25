@@ -15,6 +15,7 @@ export function createServer(opts={}){
  const handle=createApi({...opts,env});
  return http.createServer(async(req,res)=>{
   let name;try{name=decodeURIComponent(new URL(req.url,'http://localhost').pathname).slice(1)||'index.html';}catch{res.writeHead(400).end();return;}
+  if(name.startsWith('functions/v1/app/api/'))name=name.slice('functions/v1/app/'.length);
   if(name.startsWith('api/')){
    let body='',bytes=0;
    if(req.method==='POST'){const chunks=[];for await(const c of req){bytes+=c.length;if(bytes>MAX_BODY)break;chunks.push(c);}if(bytes<=MAX_BODY)body=Buffer.concat(chunks).toString('utf8');}

@@ -2,17 +2,17 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { View } from '../store';
 export const GUIDE_KEY='whale.visual-demo.guide.v2';
-const steps:{view:View;tab?:string;target:string;title:string;body:string}[]=[
- {view:'todos',target:'[data-tour="notifications"]',title:'重要消息，变成待办',body:'点击右下角铃铛，查看群通知生成的建议。确认添加后，才会进入待办清单。'},
- {view:'messages',target:'[data-tour="sources"]',title:'选择消息来源',body:'选择关注的群，用模拟管理员“我”试发通知。未配置AI时，可在「AI 设置」切换规则演示。'},
- {view:'todos',tab:'list',target:'.summary-tools',title:'查找与核对',body:'搜索任务或按群筛选。点击事项，查看原文、时间和变更记录。'},
- {view:'assistant',tab:'memory',target:'[data-tour="memory-dialogue"]',title:'记忆如何改变回答',body:'切换三套记忆，对同一个问题比较回答。点击M编号，核对每句话引用了哪条记忆。'},
- {view:'assistant',tab:'memory',target:'[data-tour="memory-dialogue"]',title:'准备学习环境',body:'说“我要开始学习了”，按记忆偏好和设备状态生成调整建议。逐项批准后，在「学习环境」标签核对结果。'}
+const steps:{view:View;target:string;title:string;body:string}[]=[
+ {view:'center',target:'[data-tour="notifications"]',title:'重要消息，变成待办',body:'点击右下角铃铛，查看群通知生成的建议。确认添加后，才会进入待办清单。'},
+ {view:'messages',target:'[data-tour="sources"]',title:'选择消息来源',body:'选择关注的群，用模拟管理员“我”试发通知。未配置AI时，可切换规则演示。'},
+ {view:'center',target:'.summary-tools',title:'查找与核对',body:'搜索任务或按群筛选。点击事项，查看原文、时间和变更记录。'},
+ {view:'memory',target:'[data-tour="memory-dialogue"]',title:'记忆如何改变回答',body:'切换三套记忆，对同一个问题比较回答。点击M编号，核对每句话引用了哪条记忆。'},
+ {view:'memory',target:'[data-tour="memory-dialogue"]',title:'准备学习环境',body:'说“我要开始学习了”，按记忆偏好和设备状态生成调整建议。逐项批准后，在“设备”核对结果。'}
 ];
-export default function UsageGuide({onViewChange,onClose}:{onViewChange:(view:View,tab?:string)=>void;onClose:()=>void}){
+export default function UsageGuide({onViewChange,onClose}:{onViewChange:(view:View)=>void;onClose:()=>void}){
  const [index,setIndex]=useState(0),[box,setBox]=useState<DOMRect|null>(null);
  const panel=useRef<HTMLDivElement>(null),button=useRef<HTMLButtonElement>(null),step=steps[index];
- useEffect(()=>{onViewChange(step.view,step.tab);},[index]);
+ useEffect(()=>{onViewChange(step.view);},[index]);
  useLayoutEffect(()=>{let observer:ResizeObserver|undefined,frame=0;const measure=()=>{const el=document.querySelector(step.target);if(el)setBox(el.getBoundingClientRect());else setBox(null);};
  const first=()=>{const el=document.querySelector(step.target);if(el){el.scrollIntoView({block:'start',behavior:'instant'});window.scrollBy({top:-140,behavior:'instant'});}measure();if(el){observer=new ResizeObserver(measure);observer.observe(el);}button.current?.focus({preventScroll:true});};
  frame=requestAnimationFrame(()=>{frame=requestAnimationFrame(first);});window.addEventListener('resize',measure);window.addEventListener('scroll',measure,true);

@@ -18,7 +18,7 @@ export default function InitiativeView({ gotoCenter }: { gotoCenter: () => void 
         </label>
         <label className="flex items-center gap-2 text-sm">活动
           <select value={ini.activity} onChange={(e) => set({ activity: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs">
-            <option value="">自动推断</option><option>在宿舍写报告</option><option>在湖边调试眼镜</option><option>在实验室</option>
+            <option value="">自动推断</option><option>在宿舍写报告</option><option>在整理项目测试记录</option><option>在实验室</option>
           </select>
         </label>
         <Badge tone="slate">静默 23:00–08:00 · 配额 {ini.used}/6</Badge>

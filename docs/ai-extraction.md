@@ -4,9 +4,9 @@
 
 ## 本机直接配置模型
 
-将 `.env.example` 复制为本目录的 `.env`，在本机编辑 `AGENTSCOPE_API_KEY`（或 `DEEPSEEK_API_KEY`）及对应 `*_MODEL`，重启 `node server.mjs`。密钥不放网页、不提交 Git、不写运行日志。默认示例型号来自 [DeepSeek JSON Output 官方文档](https://api-docs.deepseek.com/guides/json_mode/)，实际可用型号以账户为准。
+Qoder Sites 正式部署只配置 `AGENTSCOPE_API_KEY` 和 `AI_MODEL=deepseek-v4.1-flash-1017`，模型由服务端决定，前端不显示、不选择。本地 Node 仍可使用 `.env.example` 中的可选供应商配置。密钥不放网页、不提交 Git、不写运行日志。默认示例型号来自 [DeepSeek JSON Output 官方文档](https://api-docs.deepseek.com/guides/json_mode/)，实际可用型号以账户为准。
 
-默认进入“AI整理（工程接口）”。没有配置、限流（429）或模型失败时，前端**自动回退规则引擎**，并在消息旁标注「规则回退」、在建议上标注「规则引擎」，绝不冒充 AI 结果。主动选择“规则演示”则完全不调用模型。离线测试只验证接口与程序行为；理解效果以部署后真实模型为准。
+默认进入“AI整理（工程接口）”，真实 AI 是主路径；规则引擎只作为离线演示和失败兜底的辅助。AI 满载返回 `AI_BUSY` 后暂停并询问是否仅本次使用固定规则，确认后才在消息旁标注「规则回退」、在建议上标注「规则引擎」，取消则保留输入。主动选择“规则演示”则完全不调用模型。离线测试只验证接口与程序行为；理解效果以部署后真实模型为准。
 
 ## HTTP 协议
 

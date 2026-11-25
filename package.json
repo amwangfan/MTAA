@@ -1,7 +1,7 @@
 {
   "name": "whale-demo-visual",
   "private": true,
-  "version": "3.0.0",
+  "version": "3.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,7 @@
     "start": "node server.mjs",
     "test": "node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "check": "node --check server.mjs && node --check backend/handler.mjs && node --check sites/api.mjs",
+    "check": "node --check server.mjs && node --check backend/handler.mjs && node --check functions/app.mjs && node --check sites/api.mjs",
     "verify": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {

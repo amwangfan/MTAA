@@ -45,7 +45,7 @@ test('normalizes generic source/target edges', () => {
 test('group memory graph maps into adapter with kind as type and edge weight kept', () => {
   const graph = normalizeGraph({
     nodes: [
-      { id: 'group', label: 'Whale 智能眼镜项目组', type: 'group', status: '', importance: 0.9 },
+      { id: 'group', label: '鲸彩创新项目组', type: 'group', status: '', importance: 0.9 },
       { id: 'member:小禾', label: '小禾', type: 'member', status: '', importance: 0.45 },
       { id: 'memory:m1', label: '项目讨论改到周三', type: 'memory', status: 'active', importance: 0.7 },
     ],

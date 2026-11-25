@@ -3,7 +3,7 @@ import * as E from "../lib/engine.js";
 import { DemoPlayback, DEMO_STEP_COUNT, DEMO_READING_MS, DEMO_TRANSITION_MS } from "../lib/demo-playback.js";
 import { store, notify, persist, resetData, sendMessage, moveClock, act, setTrack, setAutoplay, requestStudyEnvironment, type View } from "./store";
 
-type Nav = { goto: (v: View, tab?: string) => void; openSplit: (t: any) => void; closeSplit: () => void };
+type Nav = { goto: (v: View) => void; openSplit: (t: any) => void; closeSplit: () => void };
 let playback: DemoPlayback | null = null;
 export function stopDemo() { playback?.stop(); store.demo.running=false; store.typing=null; notify(); }
 export function pauseDemo() { if(!playback)return; playback.paused=!playback.paused; store.demo.paused=playback.paused; notify(); }
@@ -45,7 +45,7 @@ export async function runDemo(nav: Nav) {
     await step(1,"群里收到一条作业通知","先看原文：明天 18:00 前，提交实验报告到学习通。",`[data-message-id="${s.messages.at(-1)?.id}"]`,"新收到的通知 · 原文");
     await leave();
 
-    nav.goto("todos");
+    nav.goto("center");
     const sug=s.suggestions.filter((g:any)=>g.status==="pending").at(-1);
     if(!sug)throw new Error('missing suggestion');
     await step(2,"通知已整理成待办建议","铃铛里可以查看任务、来源群和截止时间，等你确认。",`[data-demo-suggestion="course:${sug.id}"]`,"新生成的待办建议");
@@ -62,7 +62,7 @@ export async function runDemo(nav: Nav) {
     await step(4,"每条待办都能找到原文","左边原消息，右边整理结果；编号与连线说明信息从哪来。",'[data-demo="evidence"]',"原文与整理结果");
     await leave(); nav.closeSplit();
 
-    nav.goto("todos","reminders");
+    nav.goto("initiative");
     const t=s.tasks.find((x:any)=>x.id===taskId);
     if(t)await moveClock(E.reminderAt(t));
     persist();
@@ -74,22 +74,22 @@ export async function runDemo(nav: Nav) {
 
     setTrack("life"); store.active="home";
     requestStudyEnvironment("我要开始学习了","exam");
-    nav.goto("assistant","memory");
+    nav.goto("memory");
     await step(7,"记忆对话，准备你的学习环境","结合平常的学习偏好和当前设备状态，建议开灯、开空调并调至 24℃。",'[data-demo="study-environment"]',"学习偏好与设备状态");
     await leave();
 
-    nav.goto("assistant","environment");
+    nav.goto("devices");
     await step(8,"按学习习惯调整设备","批准本次调整后，设备状态与行动账本同步更新；这里展示模拟执行。",'[data-tour="approval"]',"单次批准区域");
     await run.wait(actionAt);
     for(const id of store.studyPlan?.actionIds||[])await act.devApprove(id);
     await step(8,"学习环境已按偏好调整（模拟）","灯已打开，空调已开启并设为 24℃；每项调整都能查看记忆来源和执行记录。",'[data-tour="device-ledger"]',"行动账本 · 模拟回执");
     await leave(DEMO_READING_MS-actionAt);
-    store.notice="演示完成。去「消息」发一条自己的通知，或重新演示并随时暂停。";
-    nav.goto("todos");
+    store.notice="演示完成。去「消息来源」发一条自己的通知，或重新演示并随时暂停。";
+    nav.goto("center");
     store.demo.phase = "entering";
     store.demo.target = "";
     store.demo.caption = "演示完成";
-    store.demo.sub = "可以去「消息」，试着发一条自己的通知。";
+    store.demo.sub = "可以去「消息来源」，试着发一条自己的通知。";
     notify();
     await run.wait(fadeMs);
   } catch {

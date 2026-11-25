@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Lightbulb, Wind, LockKeyhole, Music2, Sun, Moon, Wifi, Check } from "lucide-react";
+import { heroChat, scenarioSeeds } from "../../lib/whale-demo-data.js";
 
+const sportsSignal: any = scenarioSeeds.grade.expectedSignals.find((signal: any) => signal.title === "体育测试");
 const labels = ["群聊整理", "每日日程", "设备联动"];
 const holdMs = 2500;
 const slideMs = 800;
@@ -10,9 +12,9 @@ function SchedulePreview() {
     <header><span className="preview-eyebrow">YOUR DAY · 演示日程</span><h3><CalendarDays size={20} />把今天安排好</h3><p>11 月 24 日 · 星期二</p></header>
     <div className="preview-day-summary"><strong>3</strong><span>件重要的事<br /><small>消息有着落，生活有条理</small></span><span className="preview-date">24</span></div>
     <div className="preview-agenda">
-      <div className="agenda-item sage"><time>09:00</time><div><b>整理实验数据</b><small>项目协作群 · 已完成</small></div><Check size={15} /></div>
-      <div className="agenda-item amber"><time>14:30</time><div><b>年级大会</b><small>年级通知群 · 求实厅</small><em>提前 30 分钟提醒</em></div></div>
-      <div className="agenda-item clay"><time>18:00</time><div><b>提交课程作业</b><small>课程作业群 · 在线提交</small><em>今天截止</em></div></div>
+      <div className="agenda-item sage"><time>09:00</time><div><b>整理功能截图</b><small>{heroChat.taskCard.source} · 进行中</small></div><Check size={15} /></div>
+      <div className="agenda-item amber"><time>{sportsSignal.deadline.slice(11, 16)}</time><div><b>{sportsSignal.title}</b><small>{sportsSignal.source}群 · {sportsSignal.location}</small><em>记得带校园卡</em></div></div>
+      <div className="agenda-item clay"><time>{heroChat.taskCard.deadline.slice(-5)}</time><div><b>{heroChat.taskCard.title}</b><small>{heroChat.taskCard.source}</small><em>{heroChat.taskCard.deadline.split(" ")[0]}截止</em></div></div>
     </div>
     <footer>每一项安排，都能追溯到原消息。</footer>
   </div>;

@@ -2,13 +2,14 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {memoryProfiles,currentProfile,preferenceKey,simulatedMemoryAnswer} from '../../lib/memory-profiles.js';
 import {validateChatAnswer} from '../../lib/memory-chat-contract.js';
 import {deviceDialog} from '../../lib/device-dialog.js';
-import {act,store,state,persist,notify,requestStudyEnvironment} from '../store';
+import {act,store,state,persist,notify,requestStudyEnvironment,requestRuleFallback} from '../store';
 import ProfileMemoryEditor,{type MemoryEdit} from './ProfileMemoryEditor';
 import StudyEnvironment from './StudyEnvironment';
 import {apiFetch} from '../api';
+import {resolveAIBusy} from '../../lib/ai-client.js';
 import {Button,Badge,GlassCard} from './ui';
 import {usePagedSearch,ModuleSearch,Pager} from './paged';
-type Result={question:string;response?:any;error?:string};
+type Result={question:string;response?:any;error?:string;code?:string;fallback?:boolean};
 const KEY='whale.memory-chat.v1';
 type Edits=Record<string,Record<string,MemoryEdit>>;
 function readEdits():Edits {
@@ -65,12 +66,18 @@ export default function MemoryChat(){
    return Boolean(reply);
  };
  const run=async(compare=false)=>{const q=question.trim();if(!q||busy)return;setWriteNotice('');if(!compare && await askDevice(q))return;
- if(!compare&&!/偏好|喜欢|习惯|今后|以后|改为|改成|不再|记住/.test(q)&&requestStudyEnvironment(q,profileId))return;const ids=compare?memoryProfiles.map(p=>p.id):[profileId],mode=store.extractMode,now=state().now;setBusy(true);controller.current=new AbortController();setResults(prev=>{const copy={...prev};ids.forEach(id=>delete copy[id]);return copy;});
- try{for(const id of ids){let response:any;try{if(mode==='rules'){response={...simulatedMemoryAnswer(id,preferences[id]),profileId:id};}else{const res=await apiFetch('/api/v1/memory-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:1,profileId:id,question:q,now,preferences:preferences[id],allowUpdates:!compare}),signal:AbortSignal.any([controller.current.signal,AbortSignal.timeout(45000)])});const data=await res.json();if(!res.ok)throw Object.assign(new Error(data.message||'回答暂不可用'),{code:data.code});if(data.version!==1||data.profileId!==id||data.engine?.type!=='ai')throw new Error('返回档案或来源标识无效');validateChatAnswer(data.extraction,id,currentProfile(id,preferences[id]).memories);
+ if(!compare&&!/偏好|喜欢|习惯|今后|以后|改为|改成|不再|记住/.test(q)&&requestStudyEnvironment(q,profileId))return;const ids=compare?memoryProfiles.map(p=>p.id):[profileId],mode=store.extractMode,now=state().now;setBusy(true);const abortController=new AbortController();controller.current=abortController;const signal=abortController.signal;setResults(prev=>{const copy={...prev};ids.forEach(id=>delete copy[id]);return copy;});
+ try{for(const id of ids){let response:any;try{if(mode==='rules'){response={...simulatedMemoryAnswer(id,preferences[id]),profileId:id};}else{const res=await apiFetch('/api/v1/memory-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:1,profileId:id,question:q,now,preferences:preferences[id],allowUpdates:!compare}),signal:AbortSignal.any([signal,AbortSignal.timeout(45000)])});const data=await res.json();if(!res.ok)throw Object.assign(new Error(data.message||'回答暂不可用'),{code:data.code});if(data.version!==1||data.profileId!==id||data.engine?.type!=='ai')throw new Error('返回档案或来源标识无效');validateChatAnswer(data.extraction,id,currentProfile(id,preferences[id]).memories);
  const latest=readEdits()[id] || {};
  const grounded=Object.fromEntries(Object.entries<MemoryEdit>(data.preferenceUpdates||{}).filter(([key])=>JSON.stringify(latest[key])===JSON.stringify(preferences[id]?.[key])));
- if(!compare&&Object.keys(grounded).length)saveUpdates(id,grounded,'偏好已更新，下轮对话将使用新内容。');response=data;}setResults(prev=>({...prev,[id]:{question:q,response}}));}
- catch(e:any){if(controller.current.signal.aborted)return;setResults(prev=>({...prev,[id]:{question:q,error:e.code?e.message:'请求未完成，可稍后重试。'}}));if(e.code==='AI_NOT_CONFIGURED')break;}}
+ if(!compare&&Object.keys(grounded).length)saveUpdates(id,grounded,'偏好已更新，下轮对话将使用新内容。');store.ai.overloaded=false;response=data;}setResults(prev=>({...prev,[id]:{question:q,response}}));}
+ catch(e:any){if(signal.aborted)return;if(e.code==='AI_BUSY'){
+  store.ai.overloaded=true;
+  const useRules=await resolveAIBusy(e,requestRuleFallback);if(signal.aborted)return;
+  if(useRules){const response={...simulatedMemoryAnswer(id,preferences[id]),profileId:id};setResults(prev=>({...prev,[id]:{question:q,response,fallback:true}}));store.ai.lastFallback='繁忙（仅本次）';notify();continue;}
+  setResults(prev=>({...prev,[id]:{question:q,error:'AI 暂时繁忙，请稍后重试。',code:'AI_BUSY'}}));break;
+ }
+ setResults(prev=>({...prev,[id]:{question:q,error:e.code?e.message:'请求未完成，可稍后重试。',code:e.code}}));if(e.code==='AI_NOT_CONFIGURED')break;}}
  }finally{setBusy(false);}};
  const shown=memoryProfiles.filter(p=>results[p.id]);
  const chatPs=usePagedSearch(shown,(p:any)=>{const r=results[p.id];const sentences=r?.response?.extraction?.sentences?.map((s:any)=>s.text).join(' ')||'';return `${p.name} ${r?.question||''} ${sentences} ${r?.error||''}`;});
@@ -85,7 +92,7 @@ export default function MemoryChat(){
   </section>}
   {writeNotice&&<p role="status" className="mt-2 text-sm">{writeNotice} {undo?.profile===profileId&&<button className="group-memory-link" disabled={busy} onClick={()=>{if(readEdits()[profileId]?.[undo.id]?.removed)saveUpdates(profileId,{[undo.id]:undo.previous},'已恢复记忆。');}}>撤销移除</button>}</p>}
   <StudyEnvironment onMemory={(id,memoryId)=>{setProfile(id);setHighlight(memoryId);}}/>
-  <div aria-live="polite" className="memory-answer-grid">{chatPs.items.map((p:any)=>{const r=results[p.id];return <article key={p.id} className="memory-answer"><h3>{p.name} <Badge tone={r.response?.engine?.type==='ai'?'green':'amber'}>{r.response?.engine?.type==='ai'?'AI回答':r.error?'未完成':'固定模板'}</Badge></h3><p className="mb-3 text-sm text-muted">问题：{r.question}</p>{r.error?<p role="alert" className="text-sm text-rose-800">{r.error} · 配置AI后可点击上方按钮重试。</p>:r.response.extraction.sentences.map((sentence:any,i:number)=><p key={i} className="cited-sentence">{sentence.text} {sentence.memoryIds.map((id:string)=>{const memories=currentProfile(p.id,preferences[p.id]).memories;const index=memories.findIndex(m=>m.id===id);if(index<0)return null;return <button key={id} disabled={busy} className="memory-citation" aria-label={'查看记忆：'+memories[index].summary} onClick={()=>{setProfile(p.id);setHighlight(id);}}>M{index+1}</button>;})}</p>)}</article>;})}{chatPs.searching&&!chatPs.items.length&&<p className="text-sm text-muted">没有匹配的回答。</p>}</div>
+  <div aria-live="polite" className="memory-answer-grid">{chatPs.items.map((p:any)=>{const r=results[p.id];return <article key={p.id} className="memory-answer"><h3>{p.name} <Badge tone={r.response?.engine?.type==='ai'?'green':'amber'}>{r.response?.engine?.type==='ai'?'AI回答':r.fallback?'规则回退 / 规则引擎':r.error?'未完成':'固定模板'}</Badge></h3><p className="mb-3 text-sm text-muted">问题：{r.question}</p>{r.error?<p role="alert" className="text-sm text-rose-800">{r.error}{r.code==='AI_BUSY'?'':' · 配置AI后可点击上方按钮重试。'}</p>:r.response.extraction.sentences.map((sentence:any,i:number)=><p key={i} className="cited-sentence">{sentence.text} {sentence.memoryIds.map((id:string)=>{const memories=currentProfile(p.id,preferences[p.id]).memories;const index=memories.findIndex(m=>m.id===id);if(index<0)return null;return <button key={id} disabled={busy} className="memory-citation" aria-label={'查看记忆：'+memories[index].summary} onClick={()=>{setProfile(p.id);setHighlight(id);}}>M{index+1}</button>;})}</p>)}</article>;})}{chatPs.searching&&!chatPs.items.length&&<p className="text-sm text-muted">没有匹配的回答。</p>}</div>
    <Pager ps={chatPs}/>
  </GlassCard>;
 }

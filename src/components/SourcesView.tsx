@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Users, FileText, Image as ImageIcon, ListChecks, Link2, Megaphone, Sparkles, Cpu, PlugZap, ChevronDown, Smile, AtSign } from "lucide-react";
+import { Send, Users, FileText, Image as ImageIcon, ListChecks, Link2, Megaphone, Sparkles, Cpu, PlugZap, ChevronDown, Smile, AtSign, CircleAlert } from "lucide-react";
 import { store, state, sendMessage, notify, persist } from "../store";
 import { scenarios, memberDirectory, senderRole, day } from "../../lib/engine.js";
 import { fmt } from "../fmt";
@@ -15,9 +15,9 @@ function AttachmentView({ a }: { a: Attachment }) {
 }
 function Outcome({ m }: { m: any }) {
   const o = m.outcome; if (!o || ["chat", "ignored"].includes(o.kind)) return null;
-  const tone = m.fallback ? "is-fallback" : o.kind === "ai_pending" ? "is-wait" : o.kind === "review" ? "is-review" : "is-ok";
-  const Icon = m.fallback ? Cpu : Sparkles;
-  return <div className={"whale-receipt " + tone}><Icon className="h-3 w-3" />{m.fallback ? "规则回退 · " : ""}{o.kind === "ai_pending" ? "Whale 正在理解…" : o.text.replace(/^AI .*?已回退规则模式 · /, "")}</div>;
+  const tone = m.fallback ? "is-fallback" : o.kind === "error" || o.code ? "is-device" : o.kind === "ai_pending" ? "is-wait" : o.kind === "review" ? "is-review" : "is-ok";
+  const Icon = m.fallback ? Cpu : o.kind === "error" || o.code ? CircleAlert : Sparkles;
+  return <div className={"whale-receipt " + tone}><Icon className="h-3 w-3" />{m.fallback ? "规则回退 / 规则引擎 · " : ""}{o.kind === "ai_pending" && !o.code ? "Whale 正在理解…" : o.text.replace(/^(?:AI .*?已回退规则模式 · |规则引擎 · )/, "")}</div>;
 }
 
 export default function SourcesView() {
@@ -35,7 +35,7 @@ export default function SourcesView() {
     const node = target ? Array.from(box.querySelectorAll<HTMLElement>("[data-message-id]")).find((x) => x.dataset.messageId === target) : null;
     if (node) node.scrollIntoView({ block: "center", behavior: "smooth" }); else box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
   }, [s.scenario, s.messages.length, store.focusMessageId, store.typing]);
-  const submit = async (e: any) => { e.preventDefault(); if (!text.trim() || store.busy || !store.followed.has(store.active)) return; const t = text; store.focusMessageId = null; setText(""); await sendMessage(t, author); };
+  const submit = async (e: any) => { e.preventDefault(); if (!text.trim() || store.busy || !store.followed.has(store.active)) return; const t = text; store.focusMessageId = null; setText(""); const result = await sendMessage(t, author); if (result?.kind === "cancelled") setText(t); };
   const typing = store.typing && store.typing.scene === s.scenario ? persona(s.scenario, store.typing.author) : null;
   const followedScenes = scenarios.filter((x: any) => store.followed.has(x.id));
 
@@ -94,7 +94,7 @@ export default function SourcesView() {
             {scene.samples.map((x: string, i: number) => <button type="button" key={i} onClick={() => setText(x)} className="sample-chip">{x}</button>)}
           </div>
           <div className="compose-box">
-            <textarea aria-label="输入群消息" value={text} onChange={(e) => setText(e.target.value)} rows={2} maxLength={1200} placeholder={`以「${persona(s.scenario, author).short}」身份发言…  Ctrl+Enter 发送`} onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") submit(e); }} />
+            <textarea aria-label="输入群消息" value={text} disabled={store.busy} onChange={(e) => setText(e.target.value)} rows={2} maxLength={1200} placeholder={`以「${persona(s.scenario, author).short}」身份发言…  Ctrl+Enter 发送`} onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") submit(e); }} />
             <div className="compose-tools">
               <span className="flex items-center gap-2 text-muted"><Smile className="h-4 w-4" /><AtSign className="h-4 w-4" /><ImageIcon className="h-4 w-4" /></span>
               <select aria-label="发送者" disabled={store.busy} value={author} onChange={(e) => { setAuthor(e.target.value); store.demoAuthor = e.target.value; }}>

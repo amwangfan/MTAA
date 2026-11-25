@@ -11,5 +11,6 @@ const __dirname = path.dirname(__filename);
 export default defineConfig({
   plugins: [react(), tailwindcss(), viteSingleFile()],
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
+  server: { host: "127.0.0.1", proxy: { "/functions/v1/app": "http://127.0.0.1:18762" } },
   build: { outDir: "dist", emptyOutDir: true, target: "es2020" },
 });

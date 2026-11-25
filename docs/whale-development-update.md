@@ -11,7 +11,7 @@
 | 证据核查 | 点击证据节点按需查看所引用的群聊原话、发送者、时间和消息 ID；点击关键词查看命中的发言和对话段 | 同上 |
 | 记忆管理界面 | 选择群空间、手动整合近期消息并刷新画像、喜好和图谱 | 同上 |
 | 旧版记忆实验 | 事实提取、更正与撤销，词项/语义混合召回、候选排序及检索后激活选择等研究与回归测试 | [个人 fork 的开发分支](https://github.com/Ksupotco/whale-core/branches)；这些实验不能视为已完整移植到当前主线 |
-| 本地体验分支 | 近期私聊召回、QQ OneBot 接线、跑团辅助及群聊导入工具等实验性能力 | [个人分支提交 `12d18ee`](https://github.com/Ksupotco/whale-core/commit/12d18ee9223aef82987e5dd47d5cc879dcf602d6) |
+| 本地体验分支 | 近期私聊召回、QQ OneBot 接线、跑团辅助及群聊导入工具等实验性能力 | [个人分支提交 `12d18ee`](https://github.com/amwangfan/whale-core/commit/12d18ee9223aef82987e5dd47d5cc879dcf602d6) |
 
 ## 改动量与验证
 

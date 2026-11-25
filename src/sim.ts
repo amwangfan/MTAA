@@ -1,23 +1,27 @@
 // 群聊拟真层（仅展示）：虚构人物、群资料、公告样式、附件/接龙/图片占位、引用回复与系统提示。
-// 不改动 lib/ 中的消息与权限逻辑：作者键仍是「老师/助教/成员/我…」，这里只映射为更像真实群聊的显示。
+// 不改动 lib/ 中的消息与权限逻辑：作者键保持「老师/助教/成员/我…」，这里只映射为更像真实群聊的显示。
+import { memberDirectory, scenarios } from "../lib/whale-demo-data.js";
+
 export type Persona = { name: string; short: string; tag?: string; color: string };
 const P = (name: string, color: string, tag?: string): Persona => ({ name, short: name.replace(/^.*·\s*/, "").replace(/（.*?）/, ""), tag, color });
 
-export const groups: Record<string, { title: string; members: number; icon: string; color: string; kind: "study" | "life" }> = {
-  course: { title: "数字电路 · 2024级1班", members: 86, icon: "课", color: "#5d7351", kind: "study" },
-  club: { title: "摄影社 · 活动通知", members: 142, icon: "社", color: "#c99a3a", kind: "life" },
-  project: { title: "Whale 智能眼镜项目组", members: 6, icon: "项", color: "#bc5a34", kind: "study" },
-  lab: { title: "微纳实验室通知群", members: 23, icon: "实", color: "#4c6a7a", kind: "study" },
-  home: { title: "3栋302 & 楼长通知", members: 48, icon: "生", color: "#8a6a9a", kind: "life" },
+const colors: Record<string, string> = {
+  grade: "#7b6a99", course: "#5d7351", club: "#c99a3a", project: "#bc5a34", lab: "#4c6a7a", home: "#8a6a9a",
 };
+const members: Record<string, number> = { grade: 126, course: 86, club: 142, project: 6, lab: 23, home: 48 };
+export const groups = Object.fromEntries(scenarios.map(scene => [scene.id, {
+  title: scene.name,
+  members: members[scene.id] || 10,
+  icon: scene.mark,
+  color: colors[scene.id] || "#a3a19a",
+  kind: ["club", "home"].includes(scene.id) ? "life" as const : "study" as const,
+}])) as Record<string, { title: string; members: number; icon: string; color: string; kind: "study" | "life" }>;
 
-const personas: Record<string, Record<string, Persona>> = {
-  course: { 老师: P("王老师", "#5d7351", "群主"), 助教: P("林助教", "#6a8f6b", "管理员"), 成员: P("陈一鸣", "#a3a19a") },
-  club: { 社长: P("周社长", "#c99a3a", "群主"), 组织部: P("组织部 · 小许", "#d9a85a", "管理员"), 成员: P("李想", "#a3a19a") },
-  project: { 负责人: P("赵学长", "#bc5a34", "群主"), 成员: P("孙小雨", "#a3a19a") },
-  lab: { 实验员: P("刘老师（实验员）", "#4c6a7a", "群主"), 师兄: P("何师兄", "#7d94a0") },
-  home: { 楼长: P("张阿姨（楼长）", "#8a6a9a", "群主"), 室友: P("室友 · 阿杰", "#b08fb8") },
-};
+const roleTags: Record<string, string | undefined> = { owner: "群主", admin: "管理员", member: undefined };
+const directory = memberDirectory as Record<string, Array<{ name: string; role: string }>>;
+const personas: Record<string, Record<string, Persona>> = Object.fromEntries(scenarios.map(scene => [scene.id,
+  Object.fromEntries(directory[scene.id].map(member => [member.name, P(member.name, member.role === "owner" ? colors[scene.id] : member.role === "admin" ? "#6a8f6b" : "#a3a19a", roleTags[member.role])])),
+]));
 const ME: Persona = { name: "我", short: "我", color: "#bc5a34", tag: "管理员" };
 export function persona(scene: string, author: string): Persona {
   if (author === "我") return ME;
@@ -25,7 +29,7 @@ export function persona(scene: string, author: string): Persona {
 }
 
 const hash = (s: string) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return Math.abs(h); };
-const NOTICE = /提交|截止|集合|会议|培训|检查|报修|例会|延期|改到|取消|上交|上门/;
+const NOTICE = /提交|截止|集合|会议|讨论|培训|检查|报修|例会|延期|改到|更正|取消|撤销|完成|开始|上交|上门|测试/;
 export function isNotice(scene: string, m: any) {
   const p = persona(scene, m.author);
   return m.author !== "我" && (p.tag === "群主" || p.tag === "管理员") && NOTICE.test(m.text);
@@ -41,15 +45,18 @@ export type Attachment =
   | { type: "relay"; title: string; count: number }
   | { type: "link"; title: string; sub: string };
 const rules: [RegExp, Attachment][] = [
-  [/课程设计11月20日至12月20日/, { type: "file", name: "课程设计任务书.pdf", size: "1.2 MB", ext: "PDF" }],
-  [/选题表11月21日前提交/, { type: "file", name: "课设选题表-模板.xlsx", size: "18 KB", ext: "XLS" }],
+  [/课程设计11月20日至12月18日/, { type: "file", name: "课程设计任务书.pdf", size: "1.2 MB", ext: "PDF" }],
+  [/开题报告/, { type: "file", name: "开题报告模板.docx", size: "36 KB", ext: "DOC" }],
+  [/小组分工表/, { type: "file", name: "小组分工表-模板.xlsx", size: "18 KB", ext: "XLS" }],
   [/实验记录.*原始数据/, { type: "file", name: "实验记录模板（含原始数据页）.docx", size: "42 KB", ext: "DOC" }],
-  [/活动照片/, { type: "images", count: 3, label: "上次外拍精选" }],
-  [/志愿服务11月22日/, { type: "relay", title: "志愿服务报名接龙", count: 23 }],
+  [/青年大学习/, { type: "link", title: "青年大学习 · 本期学习入口", sub: "完成后请在本群提交截图" }],
+  [/安全教育/, { type: "link", title: "安全教育 · 场地指引", sub: "以群内最新更正时间为准" }],
+  [/活动照片/, { type: "images", count: 3, label: "上次活动精选" }],
+  [/志愿讲解报名/, { type: "relay", title: "志愿讲解报名接龙", count: 17 }],
+  [/产品说明/, { type: "file", name: "产品说明模板.docx", size: "28 KB", ext: "DOC" }],
   [/快递架/, { type: "images", count: 1, label: "快递架位置" }],
-  [/湖边首测不错/, { type: "images", count: 2, label: "湖边首测截图" }],
-  [/会议室/, { type: "link", title: "线上会议室 · 点击入会", sub: "会议号 728 316 905" }],
-  [/安全培训11月28日/, { type: "file", name: "实验室安全手册2026版.pdf", size: "3.4 MB", ext: "PDF" }],
+  [/线上会议室/, { type: "link", title: "线上会议室 · 点击入会", sub: "会议号 728 316 905" }],
+  [/设备培训/, { type: "file", name: "设备培训操作手册2026版.pdf", size: "3.4 MB", ext: "PDF" }],
 ];
 export function attachmentFor(m: any): Attachment | null {
   for (const [re, a] of rules) if (re.test(m.text)) return a;
@@ -57,10 +64,14 @@ export function attachmentFor(m: any): Attachment | null {
 }
 // 系统提示：撤回、拍一拍等，增加真实群聊的节奏感（纯展示，不进入任何提取）。
 const systemAfter: Record<string, string[]> = {
-  "这次作业量大吗？": ["陈一鸣 撤回了一条消息"],
-  "卷王。": ["李想 拍了拍 我"],
-  "原始数据放哪？": ["刘老师（实验员） 设置了群公告"],
-  "早餐帮我带一份。": ["室友 · 阿杰 拍了拍 我"],
+  "签到是要扫码吗？": ["学习委员 拍了拍 我"],
+  "1000米还是800米？": ["学习委员 撤回了一条消息"],
+  "表单链接在哪里找？": ["辅导员 设置了群公告"],
+  "报告大概需要多少页？": ["助教 撤回了一条消息"],
+  "需要带相机吗？": ["社长 拍了拍 我"],
+  "报名要写具体时段吗？": ["组织部 拍了拍 我"],
+  "原始数据放哪？": ["实验员 设置了群公告"],
+  "早餐帮我带一份。": ["室友 拍了拍 我"],
 };
 export const systemLines = (m: any) => systemAfter[m.text] || [];
 export function quoteFor(list: any[], i: number) {

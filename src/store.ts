@@ -1,26 +1,24 @@
 // 域状态 store：复用 lib 纯逻辑，负责持久化/迁移/时钟/发送/门控，以及 AI 失败时的规则回退。
 import * as E from "../lib/engine.js";
+import { demoDataVersion } from "../lib/whale-demo-data.js";
 import * as M from "../lib/memory.js";
 import * as D from "../lib/devices.js";
 import * as I from "../lib/initiative.js";
 import {planStudyEnvironment} from "../lib/study-environment.js";
 import {preferenceKey} from "../lib/memory-profiles.js";
-import { processAIMessage, processMemoryAI, decideInitiativeAI } from "../lib/ai-client.js";
-import { apiFetch, setAIChoice } from "./api";
+import { createIntroSnapshot } from "../lib/intro-snapshot.js";
+import { processAIMessage, processMemoryAI, decideInitiativeAI, resolveAIBusy } from "../lib/ai-client.js";
+import { apiFetch } from "./api";
 
 export const KEY = "whale.visual-demo.v2";
 export const CHAT_KEY = "whale.memory-chat.v1";
-export const MODEL_KEY = "whale.ai-choice.v1";
-export type ProviderInfo = { provider: string; label: string; models: string[]; live: boolean; default: string | null; error?: string | null };
-// 主导航四视图 + 非导航内页 about；todos/assistant 为双标签容器视图。
-export type View = "home" | "messages" | "todos" | "assistant" | "about";
-export type TodosTab = "list" | "reminders";
-export type AssistantTab = "memory" | "environment";
+export type View = "home" | "center" | "messages" | "memory" | "initiative" | "devices" | "about";
 export type Track = "study" | "life" | "all";
+const groupIds = E.scenarios.map((scene: any) => scene.id);
 export const TRACKS: Record<Track, { label: string; desc: string; groups: string[] }> = {
-  study: { label: "学习", desc: "课程、项目、实验室", groups: ["course", "project", "lab"] },
-  life: { label: "生活", desc: "社团、宿舍、设备", groups: ["club", "home"] },
-  all: { label: "全部", desc: "五个群一起整理", groups: ["course", "club", "project", "lab", "home"] },
+  study: { label: "学习", desc: "年级通知、课程、项目、实验室", groups: groupIds.filter(id => ["grade", "course", "project", "lab"].includes(id)) },
+  life: { label: "生活", desc: "社团、宿舍、设备", groups: groupIds.filter(id => ["club", "home"].includes(id)) },
+  all: { label: "全部", desc: "六个群一起整理", groups: groupIds },
 };
 
 const listeners = new Set<() => void>();
@@ -31,7 +29,6 @@ export const store = {
   states: {} as Record<string, any>,
   followed: new Set<string>(TRACKS.study.groups),
   track: "study" as Track,
-  tab: { todos: "list" as TodosTab, assistant: "memory" as AssistantTab },
   active: "course",
   extractMode: "ai" as "ai" | "rules",
   initiative: I.initInitiative() as any,
@@ -39,13 +36,33 @@ export const store = {
   busy: false,
   focusMessageId: null as string | null,
   notice: "",
+  reminderOpen: false,
   memoryAIEnabled: false,
   studyPlan: null as any,
   selected: null as string | null,
-  ai: { configured: null as boolean | null, model: null as string | null, provider: null as string | null, limits: null as any, lastFallback: "", providers: [] as ProviderInfo[], choice: { provider: "", model: "" }, loadingModels: false },
+  ai: { configured: null as boolean | null, overloaded: false, limits: null as any, lastFallback: "" },
   typing: null as null | { scene: string; author: string },
   demo: { running: false, paused: false, phase: "showing" as "entering" | "showing" | "leaving", step: 0, total: 0, caption: "", sub: "", target: "", focusLabel: "" },
+  ruleFallbackOpen: false,
+  ruleFallbackQueue: [] as Array<(confirmed: boolean) => void>,
 };
+
+export function requestRuleFallback(): Promise<boolean> {
+  return new Promise((resolve) => {
+    store.ruleFallbackQueue.push(resolve);
+    if (!store.ruleFallbackOpen) { store.ruleFallbackOpen = true; notify(); }
+  });
+}
+export function answerRuleFallback(confirmed: boolean) {
+  const resolve = store.ruleFallbackQueue.shift();
+  store.ruleFallbackOpen = false;
+  if (!confirmed) store.notice = "AI 暂时繁忙，已保留当前内容，请稍后重试。";
+  resolve?.(confirmed);
+  notify();
+  if (store.ruleFallbackQueue.length) queueMicrotask(() => {
+    if (store.ruleFallbackQueue.length) { store.ruleFallbackOpen = true; notify(); }
+  });
+}
 
 // 设备是宿舍里的一套：所有群共享同一个设备对象（聊天指令/主动判断/手动控制都作用在这里）。
 function linkDevices() {
@@ -60,9 +77,11 @@ function freshAll() {
 }
 
 // 载入 + 迁移
+let restoredState = false;
 try {
   const old = JSON.parse(localStorage.getItem(KEY) || "null");
-  if (old && E.scenarios.some((s: any) => s.id === old.active)) {
+  if (old && old.demoDataVersion === demoDataVersion && E.scenarios.some((s: any) => s.id === old.active)) {
+    restoredState = true;
     store.active = old.active;
     if (["ai", "rules"].includes(old.extractMode)) store.extractMode = old.extractMode;
     if (old.track && (TRACKS as any)[old.track]) store.track = old.track;
@@ -88,46 +107,37 @@ const latestClock = Math.max(...Object.values(store.states).map((s: any) => s.no
 Object.values(store.states).forEach((s: any) => { s.now = latestClock; });
 if (!store.followed.size) store.followed = new Set(TRACKS[store.track].groups);
 if (!store.followed.has(store.active)) store.active = [...store.followed][0];
+if (!restoredState) {
+  try {
+    if (!localStorage.getItem("whale.intro-snapshot.v2")) {
+      const snapshot = createIntroSnapshot(store.states, latestClock);
+      if (snapshot) {
+        store.initiative.inbox.push(snapshot.inboxItem);
+        store.initiative.ledger.push(snapshot.ledgerEntry);
+        store.initiative.used = 1; store.initiative.usedDate = snapshot.usedDate;
+        store.reminderOpen = true;
+        localStorage.setItem("whale.intro-snapshot.v2", "1");
+        persist();
+      }
+    }
+  } catch { /* 首次快照失败不影响正常使用 */ }
+}
 
 export const state = () => store.states[store.active];
 export const tickStates = () => E.scenarios.filter((x: any) => store.followed.has(x.id)).map((x: any) => store.states[x.id]);
 export const allRows = () => E.scenarios.filter((x: any) => store.followed.has(x.id)).flatMap((sc: any) => store.states[sc.id].tasks.map((t: any) => ({ scene: sc, task: t })));
 export function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify({ version: 2, active: store.active, track: store.track, states: store.states, groups: [...store.followed], extractMode: store.extractMode, initiative: store.initiative })); } catch { store.notice = "浏览器保存失败，请检查存储空间；当前操作尚未持久化。"; }
+  try { localStorage.setItem(KEY, JSON.stringify({ version: 2, demoDataVersion, active: store.active, track: store.track, states: store.states, groups: [...store.followed], extractMode: store.extractMode, initiative: store.initiative })); } catch { store.notice = "浏览器保存失败，请检查存储空间；当前操作尚未持久化。"; }
 }
 
 export async function checkAI() {
   try {
     const r = await apiFetch("/api/v1/ai-status", { signal: AbortSignal.timeout(8000) });
     const i = await r.json();
-    Object.assign(store.ai, { configured: Boolean(i.configured), model: i.model || null, provider: i.provider || null, limits: i.limits || null });
+    Object.assign(store.ai, { configured: Boolean(i.configured), limits: i.limits || null });
   } catch { store.ai.configured = false; }
   notify();
-  if (store.ai.configured) await loadModels();
 }
-// 可选模型：服务端实时从各节点 /models 拉取；选择记在本浏览器，失效时回到服务端默认。
-export async function loadModels(force = false) {
-  store.ai.loadingModels = true; notify();
-  try {
-    const r = await apiFetch("/api/v1/models", { headers: force ? { "X-Whale-Refresh": "1" } : {}, signal: AbortSignal.timeout(15000) });
-    const data = await r.json();
-    if (r.ok && Array.isArray(data.providers)) store.ai.providers = data.providers;
-  } catch { /* 保留旧列表 */ }
-  let saved: any = null; try { saved = JSON.parse(localStorage.getItem(MODEL_KEY) || "null"); } catch { /* ignore */ }
-  const cur = store.ai.choice.provider ? store.ai.choice : saved;
-  applyChoice(cur?.provider, cur?.model, false);
-  store.ai.loadingModels = false; notify();
-}
-export function applyChoice(provider?: string, model?: string, save = true) {
-  const list = store.ai.providers;
-  const p = list.find((x) => x.provider === provider) || list.find((x) => x.provider === store.ai.provider) || list[0];
-  if (!p) { store.ai.choice = { provider: "", model: "" }; setAIChoice(store.ai.choice); return; }
-  const m = model && p.models.includes(model) ? model : (p.default || p.models[0] || "");
-  store.ai.choice = { provider: p.provider, model: m };
-  setAIChoice(store.ai.choice);
-  if (save) { try { localStorage.setItem(MODEL_KEY, JSON.stringify(store.ai.choice)); } catch { /* ignore */ } notify(); }
-}
-export const currentModelLabel = () => store.ai.choice.model || store.ai.model || "";
 export const aiLive = () => store.extractMode === "ai" && store.ai.configured === true;
 
 export function setTrack(t: Track) {
@@ -137,13 +147,6 @@ export function setTrack(t: Track) {
   store.focusMessageId = null; persist(); notify();
 }
 
-// 容器视图的标签页切换（待办：清单/提醒；助手：记忆/学习环境）
-export function setTab(scope: "todos" | "assistant", tab: string) {
-  if (scope === "todos" && ["list", "reminders"].includes(tab)) store.tab.todos = tab as TodosTab;
-  if (scope === "assistant" && ["memory", "environment"].includes(tab)) store.tab.assistant = tab as AssistantTab;
-  notify();
-}
-
 // 时钟 + 节拍（AI 已配置时走 /api/v1/initiative，失败回退规则判断并标注）
 let ticking = false; let playTimer: any = null;
 let clockVersion = 0;
@@ -151,19 +154,34 @@ async function runTicks(from: number, to: number) {
   const version = clockVersion;
   const ini = store.initiative; const iv = ini.interval * 60000; const steps = Math.floor((to - from) / iv); const ts = tickStates();
   const at = async (t: number) => {
-    if (version !== clockVersion) return;
+    if (version !== clockVersion) return null;
     const tryAI = aiLive();
-    const ai = tryAI ? await decideInitiativeAI(I.buildContext(ts, t, ini), { fetcher: apiFetch }) : null;
-    if (version !== clockVersion) return;
-    const entry: any = I.tick(ts, t, ini, { aiDecision: ai });
-    if (tryAI && !ai) { entry.fallback = true; store.ai.lastFallback = "主动判断请求失败"; }
+    let aiDecision: any = null; let failure: any = null;
+    if (tryAI) {
+      const result = await decideInitiativeAI(I.buildContext(ts, t, ini), { fetcher: apiFetch });
+      if (result?.ok) { aiDecision = result.decision; store.ai.overloaded = false; } else failure = result;
+      if (failure?.code === "AI_BUSY") { store.ai.overloaded = true; if (!(await resolveAIBusy(failure, requestRuleFallback))) return null; }
+    }
+    if (version !== clockVersion) return null;
+    const entry: any = I.tick(ts, t, ini, { aiDecision });
+    if (tryAI && !aiDecision) { entry.fallback = true; store.ai.lastFallback = failure?.code === "AI_BUSY" ? "繁忙（仅本次）" : "主动判断请求失败"; }
+    return t;
   };
-  if (steps > 12) await at(to); else { for (let k = 1; k <= steps; k++) await at(from + k * iv); if (to > from + steps * iv) await at(to); }
+  if (steps > 12) { const next = await at(to); return { cancelled: next === null, last: next ?? from, stale: version !== clockVersion }; }
+  let last = from;
+  for (let k = 1; k <= steps; k++) { const next = await at(from + k * iv); if (next === null) return { cancelled: true, last, stale: version !== clockVersion }; last = next; }
+  if (to > from + steps * iv) { const next = await at(to); if (next === null) return { cancelled: true, last, stale: version !== clockVersion }; last = next; }
+  return { cancelled: false, last, stale: version !== clockVersion };
 }
 export async function moveClock(to: number) {
   if (ticking) return; ticking = true;
-  try { const from = state().now; Object.values(store.states).forEach((s: any) => { s.now = to; }); await runTicks(from, to); notify(); }
-  finally { ticking = false; }
+  try {
+    const from = state().now;
+    Object.values(store.states).forEach((s: any) => { s.now = to; });
+    const settled = await runTicks(from, to);
+    if (settled.cancelled && !settled.stale) { Object.values(store.states).forEach((s: any) => { s.now = settled.last; }); store.notice = "AI 暂时繁忙，已保留当前现场，请稍后重试。"; }
+    persist(); notify();
+  } finally { ticking = false; }
 }
 export function resetClock() {
   clockVersion += 1;
@@ -181,17 +199,26 @@ export function setAutoplay(on: boolean) {
 
 const reasonText = (code?: string) => ({ AI_NOT_CONFIGURED: "未配置", RATE_LIMITED: "调用太频繁", DAILY_LIMIT: "今日额度已用完", AI_AUTH_ERROR: "凭据不可用", BAD_AI_RESPONSE: "返回结果无效", INVALID_EXTRACTION: "结果未通过原文校验", ORIGIN_REJECTED: "来源被拒绝" } as Record<string, string>)[code || ""] || "暂时不可用";
 
+async function processMemoryWithFallback(s: any, message: any) {
+  const result = await processMemoryAI(s, message, { fetcher: apiFetch });
+  if (result?.code !== "AI_BUSY") return;
+  store.ai.overloaded = true;
+  const useRules = await resolveAIBusy(result, requestRuleFallback);
+  if (useRules) { message.memoryFallback = true; store.ai.lastFallback = "繁忙（仅本次）"; }
+  else store.notice = "AI 暂时繁忙，已有规则记忆候选保持不变，请稍后重试。";
+}
+
 // 发送：AI 模式 → /api/v1/extract；AI 未配置/失败/限流 → 自动回退规则引擎，并在消息与提示里明确标注。
 export async function sendMessage(text: string, author: string, opts: { forceRules?: boolean } = {}) {
   if (store.busy || !text.trim()) return { kind: "ignored", text: "请等待上一条消息完成，或填写消息内容。" };
   const s = state(); store.busy = true; store.typing = null; notify();
-  let outcome: any;
+  let outcome: any; let processLast = true;
   try {
     const wantAI = store.extractMode === "ai" && !opts.forceRules;
-    const fallback = (reason: string) => {
+    const fallback = (reason: string, aiBusy = false) => {
       outcome = E.extractSuggestion(s, text, author);
       const last = s.messages.at(-1);
-      if (last && last.outcome) { last.fallback = reason; last.outcome = { ...last.outcome, text: `AI ${reason}，已回退规则模式 · ${last.outcome.text}` }; outcome = last.outcome; }
+      if (last && last.outcome) { last.fallback = reason; last.outcome = { ...last.outcome, text: aiBusy ? `规则引擎 · ${last.outcome.text}` : `AI ${reason}，已回退规则模式 · ${last.outcome.text}` }; outcome = last.outcome; }
       store.ai.lastFallback = reason;
     };
     if (!wantAI) outcome = E.extractSuggestion(s, text, author);
@@ -201,16 +228,17 @@ export async function sendMessage(text: string, author: string, opts: { forceRul
       s.messages.push(message); (s as any).lastSendMessageId = message.id; persist(); notify();
       outcome = await processAIMessage(s, message, { fetcher: apiFetch });
       if (outcome?.kind === "ai_pending" && outcome.code) {
-        const idx = s.messages.findIndex((m: any) => m.id === message.id); if (idx >= 0) s.messages.splice(idx, 1);
-        if (outcome.code === "AI_NOT_CONFIGURED") store.ai.configured = false;
-        fallback(reasonText(outcome.code));
-      } else store.ai.lastFallback = "";
+        if (outcome.code === "AI_BUSY") {
+          store.ai.overloaded = true;
+          const useRules = await resolveAIBusy(outcome, requestRuleFallback);
+          if (useRules) { const idx = s.messages.findIndex((m: any) => m.id === message.id); if (idx >= 0) s.messages.splice(idx, 1); fallback("繁忙", true); store.ai.lastFallback = "繁忙（仅本次）"; }
+          else { const current = s.messages.find((m: any) => m.id === message.id); if (current) current.outcome = { kind: "error", code: "AI_BUSY", text: "AI 暂时繁忙，消息已保留，请稍后重试。" }; outcome = { kind: "cancelled", code: "AI_BUSY", text: "AI 暂时繁忙，消息已保留，请稍后重试。" }; store.notice = "AI 暂时繁忙，已保留消息和输入，请稍后重试。"; processLast = false; }
+        } else { const idx = s.messages.findIndex((m: any) => m.id === message.id); if (idx >= 0) s.messages.splice(idx, 1); if (outcome.code === "AI_NOT_CONFIGURED") store.ai.configured = false; fallback(reasonText(outcome.code)); }
+      } else { store.ai.lastFallback = ""; store.ai.overloaded = false; }
     }
-    const last = s.messages.at(-1);
-    if (last) {
-      M.extractInto(s, last, "rules");
-      if (aiLive() && store.memoryAIEnabled) void processMemoryAI(s, last, { fetcher: apiFetch }).then(() => { persist(); notify(); });
-      // Group notifications supply tasks/memories, never device-control authority.
+    if (processLast) {
+      const last = s.messages.at(-1);
+      if (last) { M.extractInto(s, last, "rules"); if (aiLive() && store.memoryAIEnabled) await processMemoryWithFallback(s, last); }
     }
   } catch { outcome = { kind: "error", text: "整理未完成，消息已保留，请重试。" }; }
   store.busy = false; persist(); notify();
@@ -218,9 +246,26 @@ export async function sendMessage(text: string, author: string, opts: { forceRul
 }
 export async function retryPending() {
   if (store.busy) return; store.busy = true; notify(); let done = 0;
+  const completed: Array<{ s: any; message: any }> = [];
   try {
     const pend = tickStates().flatMap((s: any) => s.messages.filter((m: any) => E.publishers(s).includes(m.author) && (m.outcome?.kind === "ai_pending" || (m.outcome?.kind === "review" && !m.taskId))).map((m: any) => ({ s, id: m.id })));
-    for (const { s, id } of pend) { const o = await processAIMessage(s, s.messages.find((m: any) => m.id === id), { fetcher: apiFetch }); persist(); if (o.code === "AI_NOT_CONFIGURED") { store.notice = o.text; break; } if (o.kind !== "ai_pending") done++; }
+    for (const { s, id } of pend) {
+      const message = s.messages.find((m: any) => m.id === id);
+      const previousSuggestionIds = new Set((s.suggestions || []).filter((suggestion: any) => suggestion.messageId === id && suggestion.status === "pending").map((suggestion: any) => suggestion.id));
+      const o = await processAIMessage(s, message, { fetcher: apiFetch });
+      if (o.code === "AI_BUSY") {
+        store.ai.overloaded = true;
+        const useRules = await resolveAIBusy(o, requestRuleFallback);
+        if (!useRules) { message.outcome = { kind: "ai_pending", code: "AI_BUSY", text: "AI 暂时繁忙，消息已保留，请稍后重试。" }; store.notice = "AI 暂时繁忙，已保留消息，请稍后重试。"; break; }
+        s.suggestions = (s.suggestions || []).filter((suggestion: any) => !previousSuggestionIds.has(suggestion.id));
+        const index = s.messages.findIndex((m: any) => m.id === id); if (index >= 0) s.messages.splice(index, 1);
+        E.extractSuggestion(s, message.text, message.author);
+        const last = s.messages.at(-1); if (last) { last.fallback = "繁忙"; last.outcome = { ...last.outcome, text: `规则引擎 · ${last.outcome.text}` }; completed.push({ s, message: last }); }
+        store.ai.lastFallback = "繁忙（仅本次）"; done++;
+      } else { if (o.code === "AI_NOT_CONFIGURED") { store.notice = o.text; break; } if (o.kind !== "ai_pending") { store.ai.overloaded = false; s.suggestions = (s.suggestions || []).filter((suggestion: any) => !previousSuggestionIds.has(suggestion.id)); completed.push({ s, message }); done++; } }
+      persist();
+    }
+    for (const { s, message } of completed) { M.extractInto(s, message, "rules"); if (aiLive() && store.memoryAIEnabled) await processMemoryWithFallback(s, message); }
     if (!store.notice) store.notice = `已重新处理 ${done} 条消息。`;
   } catch { store.notice = "重试未完成，消息仍保留，可稍后重试。"; } finally { store.busy = false; persist(); notify(); }
 }
@@ -230,11 +275,11 @@ export function resetData() {
   setAutoplay(false);
   store.states = {}; freshAll(); store.initiative = I.initInitiative(); store.selected = null; store.focusMessageId = null;
   store.followed = new Set(TRACKS[store.track].groups); store.active = TRACKS[store.track].groups[0];
-  store.notice = ""; store.ai.lastFallback = ""; store.studyPlan=null;
+  store.notice = ""; store.ai.lastFallback = ""; store.ai.overloaded = false; store.studyPlan=null;
   persist(); notify();
 }
 export function resetAll() {
-  try { localStorage.removeItem(CHAT_KEY); localStorage.removeItem(preferenceKey); } catch { /* ignore */ }
+  try { localStorage.removeItem(CHAT_KEY); localStorage.removeItem(preferenceKey); localStorage.removeItem("whale.intro-snapshot.v2"); } catch { /* ignore */ }
   resetData(); location.reload();
 }
 

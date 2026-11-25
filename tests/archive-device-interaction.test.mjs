@@ -23,7 +23,7 @@ test('group inbox batches source messages once and preserves old and new evidenc
   assert.equal(updateArchive(saved),archive);
   assert.equal(readArchive(other).processed.length,0);
   extractSuggestion(saved,'撤销：别人的通知','成员');
-  extractSuggestion(saved,'我喜欢先看图','成员');
+  extractSuggestion(saved,'我喜欢先看流程图','成员');
   assert.deepEqual(updateArchive(saved).lastRefresh.changes.map(c=>c.action),['add']);
   for(const text of ['通知：分享会：周五','更正：分享会改到周三','分享会取消']) extractSuggestion(saved,text,'负责人');
   assert.deepEqual(updateArchive(saved).lastRefresh.changes.map(c=>c.action),['add','correct','revoke']);

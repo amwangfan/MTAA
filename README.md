@@ -32,14 +32,14 @@ Windows 用户可以双击 `start-demo.cmd`，日志写到 `logs/`。配置本�
 
 ## 真实 AI 与回退
 
-- 默认使用「AI 整理（真实模型）」。浏览器把请求发给服务端 `/api/v1/*`，服务端默认用 `AGENTSCOPE_API_KEY` 调用 AgentScope 节点（SSE 流式，默认 `qwen3.8-flash`），也可配置 `DEEPSEEK_API_KEY` 作为备选；侧栏可切换节点，可选模型实时从节点 `/models` 拉取。**密钥不会出现在前端。**
+- 默认使用「AI 整理（真实模型）」，AI 是主路径；规则只作为离线演示和失败兜底的辅助引擎。浏览器把请求发给同源 `/functions/v1/app/api/v1/*`；本次只启用 AgentScope，模型由服务端 `AI_MODEL=deepseek-v4.1-flash-1017` 决定。前端不显示、不选择模型，只显示「AI接入 / AI超过负载 / AI未接入」。**密钥不会进入前端。**
 - 模型输出必须通过契约校验才会显示，并标注「AI提取」。校验规则：原文引用必须逐字匹配，ID 不能虚构，地点必须出现在引用里。
-- 没有配置密钥、被限流或模型失败时，前端**自动回退到规则引擎**，并标注「规则回退 / 规则引擎」，演示不会中断，也不会冒充 AI 结果。
-- 公网保护：只接受同源请求（跨域需配置 `ALLOWED_ORIGINS`）、按 IP 滑动窗口限流、设全站每日总额度。详见 `.env.example`。
+- AI 满载返回 `AI_BUSY` 后，前端暂停并询问是否仅本次使用固定规则；确认后标注「规则回退 / 规则引擎」，取消则保留输入并提示稍后重试。其他既有失败策略保持不变，不会冒充 AI 结果。
+- 公网保护：同源/允许来源校验、IP 滑动窗口与每日额度；每个匿名 Cookie 同时最多 1 个 AI 操作，全站最多 8 个，严格并发由 Function backend 数据库唯一约束保证。详见 `.env.example`。
 
 ## 部署
 
-- **Qoder Sites（比赛要求）**：见 [deploy/qoder-sites.md](deploy/qoder-sites.md)。入口是 `sites/api.mjs`，提供 Web 标准的 fetch 处理器。
+- **Qoder Sites（比赛要求）**：见 [deploy/qoder-sites.md](deploy/qoder-sites.md)。入口是 `functions/index.ts`（`Deno.serve`），业务在自包含 `functions/app.mjs`，并发租约使用 Function backend 数据库。
 - **自托管 Node**：见 [deploy/deploy.md](deploy/deploy.md)（systemd + nginx）。
 
 ## 目录
