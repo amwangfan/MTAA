@@ -58,7 +58,7 @@ function RuleFallbackDialog() {
 }
 const TITLES: Record<View, [string, string]> = {
   home: ["首页", "作品介绍"],
-  center: ["信息总结", "跨群待办、截止分类与待确认建议"],
+  center: ["待办", "跨群待办、截止分类与待确认建议"],
   messages: ["消息来源", "群聊 · 发一条通知试试"],
   memory: ["记忆", "可解释、可遗忘、会衰减的个人记忆"],
   initiative: ["主动判断", "什么时候该提醒你，什么时候该闭嘴"],
